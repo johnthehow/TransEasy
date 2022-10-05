@@ -1,1 +1,1 @@
-# BERTOLOGY: BERT explainability toolkit
+# BERTET: BERT Explainability Toolkit
