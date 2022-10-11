@@ -1,5 +1,7 @@
 # BERTET: BERT Explainability Toolkit
 ## glassbox_bert
+### 示意图
+![glassbox_bert grouping](https://github.com/johnthehow/bertet/blob/master/figure1.png?raw=true)
 ### 功能概述
 1. 在输入一句话后, glassbox_bert类返回一个封装了数据和模型的实例
 2. 不同于原生Huggingface BERT, glassbox_bert能够 方便地返回 所有 能够想想得到的 中间阶段输出, 而不仅仅是Attention和Hidden States
