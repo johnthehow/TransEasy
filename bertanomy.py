@@ -17,7 +17,7 @@ bert_model.eval()
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
 def get_word_preemb(word):
-    '''获得一个词的bert预训练词向量'''
+    '''获得一个词的bert预训练静态词向量'''
     wordidx = bert_tokenizer.convert_tokens_to_ids(word)
     we = bert_model.embeddings.word_embeddings.weight
     word_preemb = we[wordidx]
