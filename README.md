@@ -4,7 +4,7 @@
 ![glassbox_bert grouping](https://github.com/johnthehow/bertet/blob/master/figure1.png)
 ### Features
 1. The glassbox_bert class returns an instance which encloses both data and model aftering being feed with a sentence
-2. Unlike Huggingface BertModel instance, with glassbox_bert you can easily obtain all intermediate representations (44 in total) you can ever imagine, not just Attention and Hidden states.
+2. Unlike Huggingface BertModel instance, with glassbox_bert you can easily obtain all intermediate representations (45 in total) you can ever imagine, not just Attention and Hidden states.
 3. The components in glassbox_bert are highly aligned with the concepts of Transformer encoder as in Vaswani et al. 2017.
 4. All components (as class variables) are divied into six groups, namely:
 	1. Symbolic: with class variable prefix ***sym_***:
