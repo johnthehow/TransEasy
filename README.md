@@ -33,23 +33,23 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 ### A complete list of class variables of glassbox_bert
 * ****model****: a huggingface BertModel instance
 * **tokenizer**: a huggingface BertTokenizer instance
-
+<br />
 * **pipeline_res**: pipeline result of BertModel
 * **pipeline_attns**: pipeline attention of BertModel
 * **pipeline_hiddens**: pipeline hidden states of BertModel
-
+<br />
 * **sym_sent**: plain text input sentence
 * **sym_token_ids**: Bert vocabulary token ids (integer)
 * **sym_tokens**: Word-Piece tokens by BertTokenizer (including [CLS] and [SEP])
 * **sym_seq_len**: the length of word-piece-tokenized sentence (including [CLS] and [SEP])
-
+<br />
 * **preemb_vocab_emb**: pre-trained static word embeddings (30522×768)
 * **preemb_word_emb**: static word embeddings from preemb_vocab_emb
 * **preemb_pos_emb**: position embeddings
 * **preemb_seg_emb**: segmentation embeddings
 * **preemb_sum_emb**: preemb_word_emb+preemb_pos_emb+preemb_seg_emb
 * **preemb_norm_sum_emb**: LayerNorm(preemb_sum_emb)
-
+<br />
 * **selfattn_query_weight**: Query weight matrix 12×12×64×768
 * **selfattn_key_weight**: Key weight matrix 12×12×64×768
 * **selfattn_value_weight**: Value weight matrix 12×12×64×768
@@ -65,24 +65,24 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 * **selfattn_attention**: ==selfattn_qkt_scale_soft_hidden 12×12×n×n
 * **selfattn_contvec**: Attention×selfattn_value_hidden 12×12×n×64
 * **selfattn_contvec_concat**: Concatenated selfattn_contvec 12×n×768
-
+<br />
 * **addnorm1_dense_weight**: Dense weight matrix of Add & Norm 1 layer 12×768×768
 * **addnorm1_dense_bias**: Dense bias vector of Add & Norm 1 layer 12×768
 * **addnorm1_dense_hidden**: Dense hidden states of Add & Norm 1 layer 12×n×768
 * **addnorm1_add_hidden**: Residual connection: preemb_norm_sum_emb + addnorm1_dense_hidden 12×n×768
 * **addnorm1_norm_hidden**: LayerNorm(addnorm1_add_hidden) 12×n×768
-
+<br />
 * **ffnn_dense_weight**: Dense weight matrix of Feed-forward layer 12×768×3072
 * **ffnn_dense_bias**: Dense weight vector of Feed-forward layer 12×3072
 * **ffnn_dense_hidden**: Dense hidden states of Feed-forward layer 12×n×3072
 * **ffnn_dense_act**: ffnn_dense_hidden after gelu activation 12×n×3072
-
+<br />
 * **addnorm2_dense_weight**: Dense weight matrix of Add & Norm 2 layer 12×3072×768
 * **addnorm2_dense_bias**: Dense bias vector of Add & Norm 2 layer 12×768
 * **addnorm2_dense_hidden**: Dense hidden states of Add & Norm 2 layer 12×n×768
 * **addnorm2_add_hidden**: Residual connection: addnorm1_norm_hidden + addnorm2_dense_hidden 12×n×768
 * **addnorm2_norm_hidden**: LayerNorm(addnorm2_add_hidden) 12×n×768
-
+<br />
 * **manual_hiddens**: [preemb_norm_sum_emb, addnorm2_norm_hidden]
 
 
