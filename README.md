@@ -31,24 +31,29 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 4. The Softmax in Multi-Head Self-Attention is parameterized with axis=-1
 
 ### A complete list of class variables of glassbox_bert
-* model
-* tokenizer
-* pipeline_res
-* pipeline_attns
-* pipeline_hiddens
-* sym_sent
-* sym_token_ids
-* sym_tokens
-* sym_seq_len
-* preemb_vocab_emb
-* preemb_pos_emb
-* preemb_seg_emb
-* preemb_sum_emb
-* preemb_norm_sum_emb
-* selfattn_query_weight
-* selfattn_key_weight
-* selfattn_value_weight
-* selfattn_query_bias
+* ****model****: a huggingface BertModel instance
+* **tokenizer**: a huggingface BertTokenizer instance
+
+* **pipeline_res**: pipeline result of BertModel
+* **pipeline_attns**: pipeline attention of BertModel
+* **pipeline_hiddens**: pipeline hidden states of BertModel
+
+* **sym_sent**: plain text input sentence
+* **sym_token_ids**: Bert vocabulary token ids (integer)
+* **sym_tokens**: Word-Piece tokens by BertTokenizer (including [CLS] and [SEP])
+* **sym_seq_len**: the length of word-piece-tokenized sentence (including [CLS] and [SEP])
+
+* **preemb_vocab_emb**: pre-trained static word embeddings (30522×768)
+* **preemb_word_emb**: static word embeddings from preemb_vocab_emb
+* **preemb_pos_emb**: position embeddings
+* **preemb_seg_emb**: segmentation embeddings
+* **preemb_sum_emb**: preemb_word_emb+preemb_pos_emb+preemb_seg_emb
+* **preemb_norm_sum_emb**: LayerNorm(preemb_sum_emb)
+
+* **selfattn_query_weight**: Query weight matrix 12×12×64×768
+* **selfattn_key_weight**: Key weight matrix 12×12×64×768
+* **selfattn_value_weight**: Value weight matrix 12×12×64×768
+* **selfattn_query_bias**: 
 * selfattn_key_bias
 * selfattn_value_bias
 * selfattn_query_hidden
@@ -60,20 +65,24 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 * selfattn_attention
 * selfattn_contvec
 * selfattn_contvec_concat
+
 * addnorm1_dense_weight
 * addnorm1_dense_bias
 * addnorm1_dense_hidden
 * addnorm1_add_hidden
 * addnorm1_norm_hidden
+
 * ffnn_dense_weight
 * ffnn_dense_bias
 * ffnn_dense_hidden
 * ffnn_dense_act
+
 * addnorm2_dense_weight
 * addnorm2_dense_bias
 * addnorm2_dense_hidden
 * addnorm2_add_hidden
 * addnorm2_norm_hidden
+
 * manual_hiddens
 
 
