@@ -40,7 +40,7 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 * **sym_token_ids**: Bert vocabulary token ids (integer)
 * **sym_tokens**: Word-Piece tokens by BertTokenizer (including [CLS] and [SEP])
 * **sym_seq_len**: the length of word-piece-tokenized sentence (including [CLS] and [SEP])
-* **preemb_vocab_emb**: pre-trained static word embeddings (30522×768)
+* **preemb_vocab**: pre-trained static word embeddings (30522×768)
 * **preemb_word_emb**: static word embeddings from preemb_vocab_emb
 * **preemb_pos_emb**: position embeddings
 * **preemb_seg_emb**: segmentation embeddings

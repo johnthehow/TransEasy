@@ -21,7 +21,7 @@ class glassbox_bert:
         self.sym_sent = text
         self.__sym_tokenized_text_obj = self.tokenizer(self.sym_sent,return_tensors='pt')
 
-        self.preemb_vocab_emb = self.model.embeddings.word_embeddings.weight
+        self.preemb_vocab = self.model.embeddings.word_embeddings.weight
         self.sym_token_ids =self.__sym_tokenized_text_obj['input_ids'][0]
         self.sym_tokens = self.tokenizer.convert_ids_to_tokens(self.sym_token_ids.tolist())
         self.sym_seq_len = len(self.sym_token_ids)
@@ -30,7 +30,7 @@ class glassbox_bert:
         self.preemb_word_emb = torch.zeros(self.sym_seq_len,768) # n*768
         cnt = 0
         for id in self.sym_token_ids:
-            self.preemb_word_emb[cnt] = self.preemb_vocab_emb[id]
+            self.preemb_word_emb[cnt] = self.preemb_vocab[id]
             cnt +=1
         del cnt
         self.preemb_pos_emb = self.model.embeddings.position_embeddings.weight[:self.sym_seq_len] # n*768
