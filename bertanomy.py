@@ -24,21 +24,10 @@ bert_model = BertModel.from_pretrained('bert-base-uncased') # 20221013172250
 bert_model.eval()
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') # 20221013172247
 
-def get_word_pre_emb(word):
-    '''获得一个词的bert预训练静态词向量'''
-    # 依赖全局对象bert_model_20221013172250
-    # 依赖全局对象bert_tokenizer_20221013172247
-    # 20221013142717
-    word_idx = bert_tokenizer.convert_tokens_to_ids(word)
-    if word_idx == 100:
-        print('out-of-vocabulary word')
-    we = bert_model.embeddings.word_embeddings.weight
-    word_preemb = we[word_idx]
-    return word_preemb
 
-def attn_trim_scale(attn_matrix):
+
+def attn_trim_scale(attn_matrix): # 20221013142724
     ''' 删除attention矩阵中[CLS]和[SEP]对应的行和列, 并将剩余的值相应放大(每个维度的值除以所有维度值的总和)'''
-    # 20221013142724
     core_matrix = attn_matrix[1:-1,1:-1]
     container_tensor = torch.zeros(core_matrix.shape)
     row_cnt = 0
@@ -48,186 +37,74 @@ def attn_trim_scale(attn_matrix):
         row_cnt += 1
     return container_tensor
 
-def pipeline(sent):
-    '''傻瓜式的pipeline, 输入句子\n直接得到各层hidden states(1+12个)和各层attention矩阵(12×12)个'''
-    # 20221013142729
-    # 依赖全局对象bert_model_20221013172250
-    # 依赖全局对象bert_tokenizer_20221013172247
-    tokenized_sent = bert_tokenizer(sent,return_tensors='pt')
-    output = bert_model(**tokenized_sent,output_hidden_states=True,output_attentions=True)
-    tokenized_tokens = dict(enumerate(bert_tokenizer.convert_ids_to_tokens(tokenized_sent['input_ids'][0])))
-    print('output structure:')
-    for i in output:
-        print(f'{i}: {type(output[i])}')
-    return output
+def attn_merge(wordno_to_pieceno_dict,trimmed_attn_matrix): # 20221013142849
+    '''将一个削皮并缩放的attention矩阵, 按照对照表, 压缩成word-word attention(而非token-token position)'''
+    # 均值法压缩: 压缩后每行的和仍然为1, 将多行(列)的值加成一行(列), 并除以行(列)数
+    # 依赖函数: 无
+    # 被依赖:
+        # def attn_trim_scale_merge(sent): # 20221013142922
+        # def get_word_attnpos(word, sent, attn_layer, attn_head): # 20221013142830
+        # def get_word_dense_attn_rows_one_sent(word,sent):  # 20221013142836
+        # get_word_attn_rows(word,sent_len,save_path): # 20221013142842
+    # 先把行压缩
+    def rebuild_row(wordno_to_pieceno_dict,trimmed_attn_matrix):
+        new_tensor = torch.zeros((len(wordno_to_pieceno_dict.keys()),len(trimmed_attn_matrix))) # 一个承载tensor
+        for row_no_new in wordno_to_pieceno_dict:
+            new_tensor[row_no_new] = trimmed_attn_matrix[wordno_to_pieceno_dict[row_no_new]].sum(axis=0)/len(wordno_to_pieceno_dict[row_no_new])
+        return new_tensor
+    # 再把列压缩
+    def rebuild_col(wordno_to_pieceno_dict,trimmed_attn_matrix):
+        new_tensor = torch.zeros((len(wordno_to_pieceno_dict.keys()),len(wordno_to_pieceno_dict.keys()))) # 一个承载tensor
+        for col_no_new in wordno_to_pieceno_dict:
+            new_tensor[:,col_no_new] = trimmed_attn_matrix[:,wordno_to_pieceno_dict[col_no_new]].sum(axis=1)
+        return new_tensor
+    row_proced = rebuild_row(wordno_to_pieceno_dict,trimmed_attn_matrix)
+    col_proced = rebuild_col(wordno_to_pieceno_dict,row_proced)
+    return col_proced
 
-def compact_hidden_state(output_hidden_states): # 20221013142733
-    '''挤掉输出结果中维度为1的轴向'''
-    # 参数1: output_hidden_states
-    #   tuple: bert_model输出的['hidden_states']
-    #   tensor: 长得像bert_model输出的['hidden_states']的tesnor
-    hidden_states = torch.squeeze(torch.stack(output_hidden_states,dim=0))
-    return hidden_states
+def attn_trim_scale_merge(sent): # 20221013142922
+    '''将一句话的144个,attention的token-token关注矩阵按照对照表压缩成词-词关注矩阵'''
+    # 依赖全局变量bert_model
+    # 依赖函数better_tokenizer
+    # 依赖函数: attn_trim_scale(attn_matrix): # 20221013142724
+    # 依赖函数: attn_merge(wordno_to_pieceno_dict,trimmed_attn_matrix): # 20221013142849
+    # 被依赖: 无
+    # 返回值:
+        # 类型: tensor
+        # 形状: 12×12×句长×句长
+    tokenization = better_tokenizer(sent)
+    tokenized_sent = tokenization['tokenized_sent']
+    # 获得token-word合并映射表
+    wordno_to_pieceno_dict = tokenization['wordno_to_pieceno_dict']
+    # 获得未经裁边和压缩的attention矩阵
+    attn144 = bert_model(**tokenized_sent,output_attentions=True)['attentions']
+    # 创建一个裁边的attention矩阵承载变量
+    attn144_trim = torch.zeros(12,12,len(attn144[0][0][0])-2,len(attn144[0][0][0])-2)
+    # 创建一个裁边和压缩的attention矩阵承载变量
+    attn144_trim_dense = torch.zeros(12,12,len(wordno_to_pieceno_dict),len(wordno_to_pieceno_dict))
+    for lay in range(12):
+        for head in range(12):
+            attn144_trim[lay][head] = attn_trim_scale(attn144[lay][0][head].detach())
+            attn144_trim_dense[lay][head] = attn_merge(wordno_to_pieceno_dict,attn144_trim[lay][head])
+    return attn144_trim_dense
 
 
-def get_word_hidden_states_in_sent(sent,word): # 20221013165325
-    ''' 返回一句话中 一个词 在13个层的hidden_states'''
-    # 依赖全局对象bert_model_20221013172250
-    # 依赖全局对象bert_tokenizer_20221013172247
-    # 依赖函数 get_word_pos_in_sent 20221013150232
-    # 如果一个词在句中有多次出现时, 返回多个hidden states
-    # 如果一个词被拆分成wordpiece, 返回第一个piece的hidden states
-    # 如果一个可以被拆分成wordpiece的词, 在句中有多次出现, 则会返回多个单词的第一个piece的hidden states
-    tokenized_sent = bert_tokenizer(sent,return_tensors='pt') 
-    output = bert_model(**tokenized_sent,output_hidden_states=True,output_attentions=True)
-    tokenized_tokens = ' '.join([bert_tokenizer.convert_ids_to_tokens(i) for i in tokenized_sent['input_ids'].tolist()[0]]) # tokenize之后的句子
-    sent_hidden_states = torch.squeeze(torch.stack(output['hidden_states'],dim=0)) # 变输出结果的tuple为tensor, 将轴向中维度为1的轴向删除
-    perm_sent_hidden_states = sent_hidden_states.permute(1,0,2) # 
-    word_pos = get_word_pos_in_sent(word,sent)
-    res = perm_sent_hidden_states[word_pos]
-    return res
-
-def viz_hist_word_context_vecs(sent,word): # 20221013142738
-    ''' 返回一句话中 一个词 在13个层的hidden_states, 并可视化为直方图\n只有一句话中只有一个该单词的实例出现时才能用'''
-    # 依赖全局对象bert_model_20221013172250
-    # 依赖全局对象bert_tokenizer_20221013172247
-    # 依赖函数 get_word_pos_in_sent 20221013150232
-    tokenized_sent = bert_tokenizer(sent,return_tensors='pt') 
-    output = bert_model(**tokenized_sent,output_hidden_states=True,output_attentions=True)
-    tokenized_tokens = ' '.join([bert_tokenizer.convert_ids_to_tokens(i) for i in tokenized_sent['input_ids'].tolist()[0]]) # tokenize之后的句子
-    sent_hidden_states = torch.squeeze(torch.stack(output['hidden_states'],dim=0)) # 变输出结果的tuple为tensor, 将轴向中维度为1的轴向删除
-    word_pos = get_word_pos_in_sent(word,sent)
-    if len(word_pos) == 0:
-        print('Not plotable, no occurance of word found')
-    else:
-        word_hiddens = torch.stack([sent_hidden_states[:,i,:] for i in word_pos])
-        pos_cnt = 0
-        for i in word_hiddens.detach().numpy():
-            fig = plt.figure(figsize=(20,20))
-            axes = fig.subplots(3,5)
-            axes = axes.ravel()
-            for laycnt in range(13):
-                axes[laycnt].hist(i[laycnt],bins=48,edgecolor='k',density=True)
-                axes[laycnt].set_xlim(-2,2)
-                axes[laycnt].set_title(f'{word}, layer-{str(laycnt)},#{str(word_pos[pos_cnt])}')
-                laycnt +=1
-            axes.reshape(3,5)
-            fig.suptitle(f'{sent}\n{tokenized_tokens}')
-            plt.show()
-            pos_cnt += 1
-    return
-
-def get_most_similar_pre_emb_by_vec(tensor_vec,tensor_target_vecs,topn):
-    ''' 寻找一个BERT词向量和BERT预训练词向量中最相似的那个'''
-    # 20221013142743
-    # 参数tensor_vec: 已知词向量
-    # 参数tensor_target_vecs: BERT预训练词向量们
-    # 参数topn: 返回前几个
-    import scipy
-    query = tensor_vec.detach().numpy()
-    keys = tensor_target_vecs.detach().numpy()
-    cos = []
-    for key in keys:
-        cos.append(1-scipy.spatial.distance.cosine(query,key))
-    topncos = numpy.argsort(cos)[-topn:].tolist()
-    for i in topncos:
-        topcos_word = bert_tokenizer.convert_ids_to_tokens(i)
-        print(topcos_word)
-    return
-
-def get_word_context_vec_in_sent(word,layer,sent):
-    ''' 获得一个词的 第一个出现 在一句话中的 指定层的 hidden states'''
-    # 20221013142749
-    # 依赖全局对象bert_tokenizer_20221013172247
-    # 依赖全局对象bert_model_20221013172250
-    tokenized_sent = bert_tokenizer(sent,return_tensors='pt')
-    sent_output = bert_model(**tokenized_sent,output_hidden_states=True)
-    word_idx = bert_tokenizer.convert_tokens_to_ids(word)
-    # 句子的input_ids序列
-    sent_input_ids = tokenized_sent['input_ids'][0]
-    tokens_sent = bert_tokenizer.convert_ids_to_tokens(sent_input_ids)
-    # 目标词的第一个出现在input_ids中的位置
-    wordpos = (sent_input_ids == word_idx).nonzero()[0][0].item()
-    sent_cvecs = sent_output.hidden_states
-    target_layer_sent_cvec = sent_cvecs[layer][0][wordpos]
-    return target_layer_sent_cvec
-
-def get_word_pos_in_sent(word,sent): # 20221013150232
-    '''获得一个词在原始hidden states矩阵和原始attention矩阵中对应第几行, 从0计数'''
-    # 依赖全局对象bert_tokenizer_20221013172247
-    assert len(word.split(sep=' ')) == 1, print('more than one word not allowed')
-    token_ids = bert_tokenizer(sent,return_tensors='pt')['input_ids'].tolist()[0]
-    token_list = [bert_tokenizer.convert_ids_to_tokens(i) for i in token_ids]
-    print(len(token_ids))
-    print(token_ids)
-    print(token_list)
-    word_id = bert_tokenizer.convert_tokens_to_ids(word)
-    is_simplex = len(bert_tokenizer(word)['input_ids']) == 3 # 是否为单纯词(即不被拆成word-piece的词)
-    is_multiple = token_ids.count(word_id) > 1
-    is_oov = bert_tokenizer.convert_tokens_to_ids(word) == 100
-    if is_simplex:
-        if is_oov:
-            print('oov word, no position recored')
-            pos = []
-        else:
-            pos = [idx for idx,value in enumerate(token_ids) if value == word_id]
-    else:
-        pos = []
-        wordpiece_ids = bert_tokenizer(word)['input_ids'][1:-1]
-        for i in range(len(token_ids)-len(wordpiece_ids)+1):
-            if wordpiece_ids == token_ids[i:len(wordpiece_ids)+i]:
-                pos.append(i)
-    return pos
-
-def get_word_hidden_and_pos_in_sent(word,sent,layer):
-    '''获得指定词 在指定句 在指定层 的context vector和其在句中的位置(第一个出现, 从1开始, 不含[CLS][SEP)'''
-    # 20221013142755
-    # 依赖get_word_context_vec_in_sent
-    # 依赖全局对象bert_tokenizer_20221013172247
-    word_cvec = get_word_context_vec_in_sent(word,layer,sent).detach()
-    word_idx = bert_tokenizer.convert_tokens_to_ids(word)
-    tokenized_sent = bert_tokenizer(sent,return_tensors='pt')
-    input_ids = tokenized_sent['input_ids'][0]
-    word_pos = (input_ids == word_idx).nonzero()[0][0].item()
-    return (word_cvec,word_pos)
-
-def get_word_hidden_and_pos_in_sents(word,sents,layer):
-    '''get_word_hidden_and_pos_in_sent的批量句子版, 在一个layer中'''
-    # 20221013142758
-    # 依赖get_word_cvec_pos_in_sent
-    from time import time
-    sents_len = len(sents)
-    sents_cvec_ctn = torch.zeros(sents_len,768)
-    sents_word_pos_ctn = torch.zeros(sents_len)
-    sent_cnt = 0
-    time_rec = time()
-    for sent in sents:
-        pair = get_word_hidden_and_pos_in_sent(word,sent,layer)
-        sents_cvec_ctn[sent_cnt] = pair[0]
-        sents_word_pos_ctn[sent_cnt] = pair[1]
-        if sent_cnt%1000 == 0:
-            print(f'processed {sent_cnt} sents')
-            print(f'time cost: {time()-time_rec}')
-            time_rec = time()
-        sent_cnt += 1
-    return sents_cvec_ctn,sents_word_pos_ctn
-
-def get_word_hidden_and_pos_in_sents_layers(word,sents):
-    '''get_word_hidden_and_pos_in_sents的所有layer版'''
-    # 20221013142803
-    import pickle
-    for layer in range(1,13):
-        layer_res = get_word_hidden_and_pos_in_sents(word,sents,layer)
-        with open(f'd:/word_cvec_pos_layer_{layer}.pkl',mode='wb') as savefile:
-            pickle.dump(layer_res,savefile)
-        del layer_res
-    return
-
-def better_tokenizer(sent):
+def better_tokenizer(sent, trim=True): # 20221013142808
     '''BertTokenizer的好用和全面版pipeline'''
-    # 20221013142808
-    # 依赖全局对象bert_tokenizer_20221013172247
-    # 很多函数依赖本函数, 不要轻易修改API
+    # [依赖]
+        # 依赖全局对象bert_tokenizer_20221013172247
+        # 被依赖 get_bert_len_sents(sents,sent_len): # 20221013142825
+    # [返回值]
+      # 4组9项的字典
+            # 1 第一组1: tokenized_sent: 原生bert_tokenizer返回的对象
+            # 2 第二组1: notrim_nomerge_token_ids 原生bert_tokenizer返回的 token ids
+            # 3 第二组2: trim_nomerge_token_ids 原生bert_tokenizer返回的 token ids, 除去[CLS]和[SEP]对应的ID
+            # 4 第三组1: notrim_nomerge_tokens 原生bert_tokenizer返回的 tokens
+            # 5 第三组2: notrim_merge_tokens 原生bert_tokenizer返回的 tokens, 将wordpiece合并
+            # 6 第三组3: trim_nomerge_tokens 原生bert_tokenizer返回的 tokens, 除去[CLS]和[SEP]
+            # 7 第三组4: trim_merge_tokens 原生bert_tokenizer返回的 tokens, 除去[CLS]和[SEP], 并将wordpiece合并
+            # 8 第四组1: wordno_to_pieceno_list 从词到wordpiece的merge映射表,list版, 内容取决于trim开关
+            # 9 第四组2: wordno_to_pieceno_dict 从词到wordpiece的merge映射表,list版, 内容取决于trim开关
     def wordno_to_pieceno(trimmed_inputids):
         # 20221013142816
         # 获得token-word合并映射表:dict版
@@ -257,7 +134,7 @@ def better_tokenizer(sent):
             tokendict[k] = [tokenlist[token] for token in mapdict[k]]
         tokendictj = dict()
         for item in tokendict.items():
-            raw_tokens = item[1]
+            notrim_nomerge_tokens = item[1]
             new_tokens = []
             for j in item[1]:
                 if j.startswith('##'):
@@ -270,36 +147,312 @@ def better_tokenizer(sent):
     # tokenized句子
     tokenized_sent = bert_tokenizer(sent,return_tensors='pt')
     # 获得tokenized句子的input_id串 '101 2065 3999 2837 ... 102'
-    raw_input_ids = tokenized_sent['input_ids'][0]
+    notrim_nomerge_token_ids = tokenized_sent['input_ids'][0]
     # 截掉句子input_id两端的[101] 和 [102]
-    trimmed_input_ids = raw_input_ids[1:-1]
+    trim_nomerge_token_ids = notrim_nomerge_token_ids[1:-1]
     # wordpiece合并映射表
-    idmap = wordno_to_pieceno(trimmed_input_ids)
+    idmap = wordno_to_pieceno(trim_nomerge_token_ids)
     wordno_to_pieceno_list = idmap['wordno_to_pieceno_list']
     wordno_to_pieceno_dict = idmap['wordno_to_pieceno_dict']
     # 截掉句子两端[CLS]和[SEP]后的tokenization结果
-    raw_input_tokens = bert_tokenizer.convert_ids_to_tokens(raw_input_ids)
+    raw_input_tokens = bert_tokenizer.convert_ids_to_tokens(notrim_nomerge_token_ids)
+    notrim_merge_tokens = bert_tokenizer.convert_tokens_to_string(raw_input_tokens).split(sep=' ')
     trimmed_input_tokens = raw_input_tokens[1:-1]
     dense_input_tokens_dict = wordpiece_adhesive(trimmed_input_tokens,wordno_to_pieceno_list)
     dense_input_tokens_list = list(dense_input_tokens_dict.values())
-    res = {'tokenized_sent':tokenized_sent,'raw_input_ids':raw_input_ids,'trimmed_input_ids':trimmed_input_ids,'raw_tokens':raw_input_tokens,'trimmed_tokens':trimmed_input_tokens,'dense_tokens': dense_input_tokens_list,'wordno_to_pieceno_list':wordno_to_pieceno_list,'wordno_to_pieceno_dict':wordno_to_pieceno_dict}
-    print(f'raw_input_ids: {str(res["raw_input_ids"])}')
-    print(f'trimmed_input_ids: {str(res["trimmed_input_ids"])}')
-    print(f'raw_tokens: {str(res["raw_tokens"])}')
-    print(f'trimmed_tokens: {str(res["trimmed_tokens"])}')
-    print(f'dense_tokens: {str(res["dense_tokens"])}')
+    
+    if trim == True:
+        wordno_to_pieceno_list = wordno_to_pieceno_list
+        wordno_to_pieceno_dict = wordno_to_pieceno_dict
+    if trim == False:
+        wordno_to_pieceno_list = [i+1 for i in wordno_to_pieceno_list]
+        wordno_to_pieceno_list = [0] + wordno_to_pieceno_list
+        wordno_to_pieceno_list = wordno_to_pieceno_list + [wordno_to_pieceno_list[-1]+1]
+        wordno_to_pieceno_dict = dict()
+        wordno_to_pieceno_dict_pre = [[idx for idx,value in enumerate(wordno_to_pieceno_list) if value==key] for key in set(wordno_to_pieceno_list)]
+        for i in set(wordno_to_pieceno_list):
+            wordno_to_pieceno_dict[i] = wordno_to_pieceno_dict_pre[i]
+
+
+    res = {'tokenized_sent':tokenized_sent,'notrim_nomerge_token_ids':notrim_nomerge_token_ids,'trim_nomerge_token_ids':trim_nomerge_token_ids,'notrim_nomerge_tokens':raw_input_tokens,'notrim_merge_tokens':notrim_merge_tokens, 'trim_nomerge_tokens':trimmed_input_tokens,'trim_merge_tokens': dense_input_tokens_list,'wordno_to_pieceno_list':wordno_to_pieceno_list,'wordno_to_pieceno_dict':wordno_to_pieceno_dict}
+    print(f'\n[Message from better_tokenizer]')
+
+    print(f'notrim_nomerge_token_ids: {str(res["notrim_nomerge_token_ids"])}')
+    print(f'trim_nomerge_token_ids: {str(res["trim_nomerge_token_ids"])}')
+
+    print(f'notrim_nomerge_tokens: {str(res["notrim_nomerge_tokens"])}')
+    print(f'notrim_merge_tokens: {notrim_merge_tokens}')
+    print(f'trim_nomerge_tokens: {str(res["trim_nomerge_tokens"])}')
+    print(f'trim_merge_tokens: {str(res["trim_merge_tokens"])}')
+
     print(f'wordno_to_pieceno_list: {str(res["wordno_to_pieceno_list"])}')
     print(f'wordno_to_pieceno_dict: {str(res["wordno_to_pieceno_dict"])}')
     return res
 
-def get_actual_len_sents(sents,sent_len):
+
+def get_word_pos_in_sent(word,sent,trim=True,merge=True,first=True): # 20221017211829
+    '''返回一个词在句中的位置, 有11种情况, 用三个开关选择情况\ntrim开关: 句子是否削去句子两端的[CLS]和[SEP]\nmerge开关: 句子是否合并wordpiece\nfirst开关: 当词是wordpiece组合词时, 返回第一个词的位置还是所有位置, 仅当merge开关为false的情况生效, 仅对wordpiece组合词有意义'''
+    # [输入值]
+        # trim开关: 是否削去句子两端的[CLS]和[SEP]
+        # merge开关: 是否合并wordpiece
+        # first开关: 当词是wordpiece组合词时, 返回第一个词的位置还是所有位置, 仅当merge开关为false的情况生效, 仅对wordpiece组合词有意义
+    # [返回值]
+        # 位置列表, 元素为整数
+    # [依赖]
+        # better_tokenizer
+        # bert_tokenizer
+    # [被依赖]
+        # get_word_hidden_states_in_sent(word,sent,mode='first'): # 20221013165325
+        # viz_hist_word_context_vecs(sent,word): # 20221013142738
+        # get_word_attn_rows(word,sent_len,save_path): # 20221013142842
+    assert len(word.split(sep=' ')) == 1, print('more than one word not allowed')
+    
+    res_better_tokenizer = better_tokenizer(sent)
+    notrim_nomerge_token_ids = res_better_tokenizer['notrim_nomerge_token_ids']
+    notrim_nomerge_tokens = res_better_tokenizer['notrim_nomerge_tokens']
+    notrim_merge_tokens = res_better_tokenizer['notrim_merge_tokens']
+    trim_nomerge_tokens = res_better_tokenizer['trim_nomerge_tokens']
+    trim_merge_tokens = res_better_tokenizer['trim_merge_tokens']
+
+    is_simplex = len(bert_tokenizer(word)['input_ids']) == 3 # 是否为单纯词(即不被拆成word-piece的词)
+    is_oov = bert_tokenizer.convert_tokens_to_ids(word) == 100
+
+    if is_simplex:
+        if is_oov:
+            pos = []
+            print('\n[get_word_pos_in_sent]\noov word, ignored')
+        else:
+            if trim == True:
+                if merge == True:
+                    pos = [idx for idx,value in enumerate(trim_merge_tokens) if value == word]
+                else:
+                    pos = [idx for idx,value in enumerate(trim_nomerge_tokens) if value == word]
+            else:
+                if merge == True:
+                    pos = [idx for idx,value in enumerate(notrim_merge_tokens) if value == word]
+                else:
+                    pos = [idx for idx,value in enumerate(notrim_nomerge_tokens) if value == word]
+    else:
+        wordpiece_ids = bert_tokenizer(word)['input_ids'][1:-1]
+        if trim == True:
+            if merge == True:
+                pos = [idx for idx,value in enumerate(trim_merge_tokens) if value == word]
+            else:
+                if first == True:
+                    pos = []
+                    for i in range(len(notrim_nomerge_token_ids)-len(wordpiece_ids)+1):
+                        if wordpiece_ids == notrim_nomerge_token_ids[i:len(wordpiece_ids)+i].tolist():
+                            pos.append(i-1)
+                else:
+                    pos = []
+                    for i in range(len(notrim_nomerge_token_ids)-len(wordpiece_ids)+1):
+                        if wordpiece_ids == notrim_nomerge_token_ids[i:len(wordpiece_ids)+i].tolist():
+                            pos += [i+offset-1 for offset in range(len(wordpiece_ids))]
+        else:
+            if merge == True:
+                pos = [idx for idx,value in enumerate(notrim_merge_tokens) if value == word]
+            else:
+                if first == True:
+                    pos = []
+                    for i in range(len(notrim_nomerge_token_ids)-len(wordpiece_ids)+1):
+                        if wordpiece_ids == notrim_nomerge_token_ids[i:len(wordpiece_ids)+i].tolist():
+                            pos.append(i)
+                else:
+                    pos = []
+                    for i in range(len(notrim_nomerge_token_ids)-len(wordpiece_ids)+1):
+                        if wordpiece_ids == notrim_nomerge_token_ids[i:len(wordpiece_ids)+i].tolist():
+                            pos += [i+offset for offset in range(len(wordpiece_ids))]                   
+
+    return pos
+
+def pipeline(sent): # 20221013142729
+    '''傻瓜式的pipeline, 输入句子\n直接得到各层hidden states(1+12个)和各层attention矩阵(12×12)个\n输出为字典,结果全为tensor格式'''
+    # 依赖全局对象bert_model_20221013172250
+    # 依赖全局对象bert_tokenizer_20221013172247
+    # 被依赖
+        # hidden_states_norm(sent,plot=False): # 20221013142939
+        # get_sent_represent_vec_avg(sent): # 20221014105633
+        # better_tokenizer(sent): # 20221013142808
+    tokenized_sent = bert_tokenizer(sent,return_tensors='pt')
+    output = bert_model(**tokenized_sent,output_hidden_states=True,output_attentions=True)
+    attentions = torch.squeeze(torch.stack(output['attentions'],dim=0))
+    hidden_states = torch.squeeze(torch.stack(output['hidden_states'],dim=0))
+    last_hidden_state = torch.squeeze(output['last_hidden_state'])
+    result = {'attentions':attentions,'hidden_states':hidden_states,'last_hidden_state':last_hidden_state}
+    print('\n[pipeline]\nresult structure:')
+    for i in result:
+        print(f'{i}: {type(result[i])}')
+    return result
+
+
+def get_sent_hidden_states(sent,merge=False): # 20221017151232
+    '''获得一句话的hidden states矩阵(13层)\nmerge开关: 是否将wordpiece组合的hidden states合并为一个\ntrim开关: 是否削去[CLS][SEP]对应的hidden states'''
+    # 依赖
+        # pipeline 20221013142729
+        # better_tokenizer 20221013142808
+    if merge == False:
+        res = pipeline(sent)['hidden_states']
+    if merge == True:
+        hidden_states = pipeline(sent)['hidden_states']
+        wordno_to_pieceno_dict = better_tokenizer(sent,trim=False)['wordno_to_pieceno_dict']
+        new_tensor = torch.zeros(13,len(wordno_to_pieceno_dict.keys()),768) # 一个承载tensor
+        for layer in range(13):
+            for row in range(len(wordno_to_pieceno_dict.keys())):
+                new_tensor[layer][row] = hidden_states[layer][wordno_to_pieceno_dict[row]].sum(axis=0)/len(wordno_to_pieceno_dict[row])
+        res = new_tensor
+    return res
+
+
+
+
+
+
+
+
+
+def get_word_pre_emb(word): # 20221013142717
+    '''获得一个词的bert预训练静态词向量'''
+    # 依赖全局对象bert_model_20221013172250
+    # 依赖全局对象bert_tokenizer_20221013172247
+    
+    word_idx = bert_tokenizer.convert_tokens_to_ids(word)
+    if word_idx == 100:
+        print('out-of-vocabulary word')
+    we = bert_model.embeddings.word_embeddings.weight
+    word_preemb = we[word_idx]
+    return word_preemb
+
+
+
+def get_word_hidden_states_in_sent(word,sent,merge=False,first=False): # 20221013165325
+    ''' 返回一句话中 一个词 在13个层的hidden_states, 如果有多次出现, 就有多个返回'''
+    # [输入]
+        # merge开关: wordpiece组合型词是否合并
+        # first开关: wordpiece组合型词取第一个词作为代表, 还是合并为一个hidden state
+    # [依赖]
+        # 依赖全局对象 bert_tokenizer
+        # 依赖函数 get_sent_hidden_states
+        # 依赖函数 get_word_pos_in_sent
+    # [返回]
+        # 数据类型 tensor
+        # 尺寸 13×n×768
+    
+    assert len(word.split(sep=' ')) == 1, print('more than one word not allowed')
+    is_simplex = len(bert_tokenizer(word)['input_ids']) == 3 # 是否为单纯词(即不被拆成word-piece的词)
+    is_oov = bert_tokenizer.convert_tokens_to_ids(word) == 100
+
+    if is_simplex:
+        if is_oov:
+            res = None
+            print('\n[get_word_hidden_states_in_sent]\noov token not allowed')
+        else:
+            if merge == True:
+                sent_hidden_states = get_sent_hidden_states(sent,merge=True)
+                word_pos = get_word_pos_in_sent(word,sent,trim=False,merge=True,first=True)
+                res = sent_hidden_states[:,word_pos,:]
+            else:
+                sent_hidden_states = get_sent_hidden_states(sent,merge=False)
+                word_pos = get_word_pos_in_sent(word,sent,trim=False,merge=False,first=True)
+                res = sent_hidden_states[:,word_pos,:]
+    else:
+        if merge == True:
+            if first == True:
+                sent_hidden_states = get_sent_hidden_states(sent,merge=True)
+                word_pos = get_word_pos_in_sent(word,sent,trim=False,merge=True,first=True)
+                res = sent_hidden_states[:,word_pos,:]
+            else:
+                sent_hidden_states = get_sent_hidden_states(sent,merge=True)
+                word_pos = get_word_pos_in_sent(word,sent,trim=False,merge=True,first=False)
+                res = sent_hidden_states[:,word_pos,:]
+        else:
+            if first == True:
+                sent_hidden_states = get_sent_hidden_states(sent,merge=False)
+                word_pos = get_word_pos_in_sent(word,sent,trim=False,merge=False,first=True)
+                res = sent_hidden_states[:,word_pos,:]
+            else:
+                sent_hidden_states = get_sent_hidden_states(sent,merge=False)
+                word_pos = get_word_pos_in_sent(word,sent,trim=False,merge=False,first=False)
+                res = sent_hidden_states[:,word_pos,:]
+
+    return res
+
+
+def viz_hist_word_context_vecs(sent,word,merge=False,first=True): # 20221013142738
+    ''' 返回一句话中 一个词 在13个层的hidden_states, 并可视化为直方图'''
+    # [输入]
+        # merge开关: wordpiece组合型词是否合并
+        # first开关: wordpiece组合型词取第一个词作为代表, 还是合并为一个hidden state
+    # [输出]
+        # 可视化图像
+    # [依赖]
+        # 依赖函数 get_word_hidden_states_in_sent
+        # 依赖函数 better_tokenizer
+        # 依赖函数 get_word_pos_in_sent
+
+    if merge == True:
+        if first == True:
+            word_hiddens = get_word_hidden_states_in_sent(word,sent,merge=True,first=True).permute(1,0,2)
+            res_better_tokenizer = better_tokenizer(sent,trim=False)
+            tokenized_tokens = res_better_tokenizer['notrim_merge_tokens']
+            word_pos = get_word_pos_in_sent(word,sent,trim=False,merge=True,first=True)
+        else:
+            word_hiddens = get_word_hidden_states_in_sent(word,sent,merge=True,first=False).permute(1,0,2)
+            res_better_tokenizer = better_tokenizer(sent,trim=False)
+            tokenized_tokens = res_better_tokenizer['notrim_merge_tokens']
+            word_pos = get_word_pos_in_sent(word,sent,trim=False,merge=True,first=False)
+    else:
+        if first == True:
+            word_hiddens = get_word_hidden_states_in_sent(word,sent,merge=False,first=True).permute(1,0,2)
+            res_better_tokenizer = better_tokenizer(sent,trim=False)
+            tokenized_tokens = res_better_tokenizer['notrim_nomerge_tokens']
+            word_pos = get_word_pos_in_sent(word,sent,trim=False,merge=False,first=True)           
+        else:
+            word_hiddens = get_word_hidden_states_in_sent(word,sent,merge=False,first=False).permute(1,0,2)
+            res_better_tokenizer = better_tokenizer(sent,trim=False)
+            tokenized_tokens = res_better_tokenizer['notrim_nomerge_tokens']
+            word_pos = get_word_pos_in_sent(word,sent,trim=False,merge=False,first=False)
+    pos_cnt = 0
+    for occur in word_hiddens.detach().numpy():
+        fig = plt.figure(figsize=(20,20))
+        axes = fig.subplots(3,5)
+        axes = axes.ravel()
+        for laycnt in range(13):
+            axes[laycnt].hist(occur[laycnt],bins=48,edgecolor='k',density=True)
+            axes[laycnt].set_xlim(-2,2)
+            axes[laycnt].set_title(f'{word}, layer-{str(laycnt)},#{str(word_pos[pos_cnt])}')
+            laycnt +=1
+        axes.reshape(3,5)
+        fig.suptitle(f'{sent}\n{tokenized_tokens}\npage {pos_cnt+1} of {len(word_pos)}')
+        plt.show()
+        pos_cnt += 1
+    return
+
+def get_most_similar_pre_emb_by_vec(tensor_vec,tensor_target_vecs,topn):
+    ''' 寻找一个BERT词向量和BERT预训练词向量中最相似的那个'''
+    # 20221013142743
+    # 参数tensor_vec: 已知词向量
+    # 参数tensor_target_vecs: BERT预训练词向量们
+    # 参数topn: 返回前几个
+    import scipy
+    query = tensor_vec.detach().numpy()
+    keys = tensor_target_vecs.detach().numpy()
+    cos = []
+    for key in keys:
+        cos.append(1-scipy.spatial.distance.cosine(query,key))
+    topncos = numpy.argsort(cos)[-topn:].tolist()
+    for i in topncos:
+        topcos_word = bert_tokenizer.convert_ids_to_tokens(i)
+        print(topcos_word)
+    return
+
+
+def get_bert_len_sents(sents,sent_len): # 20221013142825
     '''返回句子中, bert分词后为指定长度的句子'''
     # 依赖better_tokenizer 20221013142808
-    # 20221013142825
     actual_len_sents = []
     sent_cnt = 0
     for sent in sents:
-        if len(better_tokenizer(sent)['dense_tokens']) == sent_len:
+        if len(better_tokenizer(sent)['trim_merge_tokens']) == sent_len:
             actual_len_sents.append(sent)
             sent_cnt +=1
             if sent_cnt%100 ==0:
@@ -307,7 +460,7 @@ def get_actual_len_sents(sents,sent_len):
     return actual_len_sents
 
 
-def get_word_attnpos(word:str,sent:str,attn_layer:int, attn_head:int):
+def get_word_attnpos(word, sent, attn_layer, attn_head): # 20221013142830
     ''' 返回 指定词 在指定句子的 指定head的 关注位置分布, 返回值有6项(tuple)
     返回值0: 指定词在指定句子的指定head的关注位置分布
     返回值1: WordPiece-常规分词映射表
@@ -316,10 +469,12 @@ def get_word_attnpos(word:str,sent:str,attn_layer:int, attn_head:int):
     返回值4: tokenization的原始结果(字符串)
     返回值5: tokenization的合并版结果(字符串)
     '''
-    # 20221013142830
+    
     # 依赖全局对象bert_tokenizer_20221013172247
     # 依赖全局对象bert_model_20221013172250
-
+    # 被依赖
+        # attndistance(word,sent,attn_layer,attn_head): # 20221013142901
+        # attnpos_batch(word:str,sents:list): # 20221013142910
     # tokenized句子
     tokenized_sent = bert_tokenizer(sent,return_tensors='pt')
     # 获得tokenized句子的input_id串 '101 2065 3999 2837 ... 102'
@@ -343,19 +498,15 @@ def get_word_attnpos(word:str,sent:str,attn_layer:int, attn_head:int):
 
     # 获得未经裁边和压缩的attention矩阵
     attn = bert_model(**tokenized_sent,output_attentions=True)['attentions'][attn_layer][0][attn_head].detach()
-    # 获得裁边后的attention矩阵
-    attn_trimmed = attn_trim_scale(attn) # 修边attn矩阵
-    # 获得裁边并压缩后的attention矩阵(依据token-word合并映射表)
-    attn_dense = attn_matrix_denser(token_word_id_map_dict,attn_trimmed) # 修边-合并矩阵
+    attn_merged = attn_trim_scale_merge(attn) # 修边-合并矩阵
     # 获得目标词在裁边并压缩后attention矩阵中对应的行(tensor)
-    word_attn_dense_row = attn_dense[target_word_attn_row_num_dense].tolist()
+    word_attn_dense_row = attn_merged[target_word_attn_row_num_dense].tolist()
     # 获得目标词在裁边并压缩后attention矩阵中对应的行(dict: key是位置, value是关注度)
     #word_attn_row_dict = dict(enumerate(word_attn_row.tolist()))
-    return (word_attn_dense_row,attn_dense,target_word_attn_row_num_dense)
+    return (word_attn_dense_row,attn_merged,target_word_attn_row_num_dense)
 
-def get_word_dense_attn_rows_one_sent(word:str,sent:str):
+def get_word_dense_attn_rows_one_sent(word ,sent): # 20221013142836
     '''获取一个词在一句话中的attention row(压缩版)'''
-    # 20221013142836
     # tokenized句子
     tokenized_sent = bert_tokenizer(sent,return_tensors='pt')
     # 获得tokenized句子的input_id串 '101 2065 3999 2837 ... 102'
@@ -381,31 +532,19 @@ def get_word_dense_attn_rows_one_sent(word:str,sent:str):
     actual_sent_len = len(token_word_id_map_dict)
 
     # 容器: dense attention矩阵(144个)
-    attn_dense_matrices = torch.zeros(12,12,actual_sent_len,actual_sent_len)
+    attn_dense_matrices = attn_trim_scale_merge(sent)
     # 容器: dense attention行(144个)
     attn_dense_rows = torch.zeros(12,12,actual_sent_len)
 
-    # 获得未经裁边和压缩的attention矩阵
-    raw_attns = bert_model(**tokenized_sent,output_attentions=True)['attentions']
-
     for layer in range(12):
         for head in range(12):
-            raw_attn = raw_attns[layer][0][head].detach()
-            # 获得裁边后的attention矩阵
-            attn_trimmed = attn_trim_scale(raw_attn) # 修边attn矩阵
-            # 获得裁边并压缩后的attention矩阵(依据token-word合并映射表)
-            attn_dense = attn_matrix_denser(token_word_id_map_dict,attn_trimmed) # 修边-合并矩阵
-            attn_dense_matrices[layer][head] = attn_dense
-            # 获得目标词在裁边并压缩后attention矩阵中对应的行(tensor)
-            word_attn_dense_row = attn_dense[target_word_attn_row_num_dense].detach()
-            attn_dense_rows[layer][head]=word_attn_dense_row
+            attn_dense_rows[layer][head] = attn_dense_matrices[layer][head][target_word_attn_row_num_dense]
             # 获得目标词在裁边并压缩后attention矩阵中对应的行(dict: key是位置, value是关注度)
             #word_attn_row_dict = dict(enumerate(word_attn_row.tolist()))
     return {'matrices':attn_dense_matrices,'rows':attn_dense_rows}
 
-def get_word_attn_rows(word,sent_len,save_path):
+def get_word_attn_rows(word,sent_len,save_path): # 20221013142842
     '''获得一个词对应的attention矩阵中的一行'''
-    # 20221013142842
     from pathlib import Path
     import pickle
     from thehow import posdist
@@ -419,7 +558,7 @@ def get_word_attn_rows(word,sent_len,save_path):
     for sent in sents:
         # tokenized句子
         res_better_token  = better_tokenizer(sent)
-        true_len  = len(res_better_token['dense_tokens'])
+        true_len  = len(res_better_token['trim_merge_tokens'])
         if true_len == sent_len:
             sents_true_len.append(sent)
     print(f'No. of sents of len {sent_len}: {len(sents_true_len)}')
@@ -432,13 +571,12 @@ def get_word_attn_rows(word,sent_len,save_path):
         wordno_to_pieceno_dict = res_better_token['wordno_to_pieceno_dict']
         wordno_to_pieceno_list = res_better_token['wordno_to_pieceno_list']
         sent_attn_144 = torch.stack(bert_model(**tokenized_sent,output_attentions=True)['attentions']).squeeze()
-        word_row_num = get_word_attn_row_num(word,tsent)
+        word_row_num = get_word_pos_dense_in_sent(word,tsent)
         word_pos.append(word_row_num)
         for layer in range(12):
             for head in range(12):
-                attn_trimmed = attn_trim_scale(sent_attn_144[layer][head])
-                attn_dense = attn_matrix_denser(wordno_to_pieceno_dict,attn_trimmed)
-                attn_row = attn_dense[word_row_num].detach()
+                attn_merged = attn_trim_scale_merge(sent_attn_144[layer][head])
+                attn_row = attn_merged[word_row_num].detach()
                 attn_rows[layer][head][tsent_cnt]=attn_row
         tsent_cnt += 1
         if tsent_cnt%100 ==0:
@@ -458,52 +596,12 @@ def get_word_attn_rows(word,sent_len,save_path):
         pass
     return attn_rows,word_pos
 
-def attn_matrix_denser(wordno_to_pieceno_dict,trimmed_attn_matrix):
-    '''压缩attention矩阵'''
-    # 20221013142849
-    # 先把行压缩
-    def rebuild_row(wordno_to_pieceno_dict,trimmed_attn_matrix):
-        new_tensor = torch.zeros((len(wordno_to_pieceno_dict.keys()),len(trimmed_attn_matrix)))
-        for row_no_new in wordno_to_pieceno_dict:
-            new_tensor[row_no_new] = trimmed_attn_matrix[wordno_to_pieceno_dict[row_no_new]].sum(axis=0)/len(wordno_to_pieceno_dict[row_no_new])
-        return new_tensor
-    # 再把列压缩
-    def rebuild_col(wordno_to_pieceno_dict,trimmed_attn_matrix):
-        new_tensor = torch.zeros((len(wordno_to_pieceno_dict.keys()),len(wordno_to_pieceno_dict.keys())))
-        for col_no_new in wordno_to_pieceno_dict:
-            new_tensor[:,col_no_new] = trimmed_attn_matrix[:,wordno_to_pieceno_dict[col_no_new]].sum(axis=1)
-        return new_tensor
-    row_proced = rebuild_row(wordno_to_pieceno_dict,trimmed_attn_matrix)
-    col_proced = rebuild_col(wordno_to_pieceno_dict,row_proced)
-    return col_proced
 
-def get_word_attn_row_num(word,sent):
-    '''获得一个词在句中的位置(dense attn matrix的行号)'''
-    # 20221013142854
-    # tokenized句子
-    tokenized_sent = bert_tokenizer(sent,return_tensors='pt')
-    # 获得tokenized句子的input_id串 '101 2065 3999 2837 ... 102'
-    input_ids = tokenized_sent['input_ids'][0]
-    # 截掉句子input_id两端的[101] 和 [102]
-    input_ids = input_ids[1:-1]
 
-    # 获得token-word合并映射表
-    better_token = better_tokenizer(sent)
-    token_word_id_map_list = better_token['wordno_to_pieceno_list']
-    token_word_id_map_dict = better_token['wordno_to_pieceno_dict']
-    
-    # 获得目标词在BERT词表中的编号
-    target_word_id = bert_tokenizer.convert_tokens_to_ids(word)
-    # 获得目标词在token-word合并映射表转换前的attention矩阵中的行号
-    target_word_attn_row_num_token =  (input_ids == target_word_id).nonzero()[0]
-    # 获得目标词在token-word合并映射表转换后的attention矩阵中的行号
-    target_word_attn_row_num_dense = token_word_id_map_list[target_word_attn_row_num_token]
 
-    return target_word_attn_row_num_dense
 
-def attndistance(word,sent,attn_layer,attn_head):
+def attndistance(word,sent,attn_layer,attn_head): # 20221013142901
     '''计算一个词在一个layer,一个head,一个句子中的关注距离'''
-    # 20221013142901
     # 依赖get_word_attnpos()
     attnpos_res = get_word_attnpos(word,sent,attn_layer,attn_head)
     attnpos_dist = attnpos_res[0]
@@ -529,9 +627,8 @@ def attndistance_all(word,sents):
     return perlayer
 
 
-def attnpos_batch(word:str,sents:list):
+def attnpos_batch(word:str,sents:list): # 20221013142910
     '''所有layer和head中, 获取n句话中一个词对各个位置的关注, 返回值为字典'''
-    # 20221013142910
     # attnpos 处理一个head需要0.18s. 那么, 20句话,144个head约需要9.6分钟
     attnpos_layers = []
     for layer in range(0,12):
@@ -568,40 +665,17 @@ def attnpos_stat(attnpos_batch_result:list):
     return layers_report
 
 
-
-def attn_matrix_denser_batch(sent):
-    '''将一句话的144个,attention的token-token关注矩阵按照对照表压缩成词-词关注矩阵'''
-    # 20221013142922
-    # 依赖全局变量bert_model
-    # tokenizr句子
-    tokenization = better_tokenizer(sent)
-    tokenized_sent = tokenization['tokenized_sent']
-    # 获得token-word合并映射表
-    wordno_to_pieceno_dict = tokenization['wordno_to_pieceno_dict']
-    
-    # 获得未经裁边和压缩的attention矩阵
-    attn144 = bert_model(**tokenized_sent,output_attentions=True)['attentions']
-    # 裁边的attention矩阵
-    attn144_trim = torch.zeros(12,12,len(attn144[0][0][0])-2,len(attn144[0][0][0])-2)
-    # 裁边和压缩的attention矩阵
-    attn144_trim_dense = torch.zeros(12,12,len(wordno_to_pieceno_dict),len(wordno_to_pieceno_dict))
-    for lay in range(12):
-        for head in range(12):
-            attn144_trim[lay][head] = attn_trim_scale(attn144[lay][0][head].detach())
-            attn144_trim_dense[lay][head] = attn_matrix_denser(wordno_to_pieceno_dict,attn144_trim[lay][head])
-    return attn144_trim_dense
-
-def mean_attn_distance_rel_one_sent_all_head(sent):
+def mean_attn_distance_rel_one_sent_all_head(sent): # 20221013142927 # 损坏
     '''一个句子144个attention head的平均关注距离'''
-    # 20221013142927
+    
     # 依赖attn_denser
     heads_ctn = []
-    attn_dense = attn_denser(sent)[0].tolist()
+    attn_merged = attn_denser(sent)[0].tolist()
     for lay in range(12):
         for head in range(12):
             attndis_row_ctn = []
             row_cnt = 0
-            for row in attn_dense[lay][head]:
+            for row in attn_merged[lay][head]:
                 rowmaxid = row.index(max(row))
                 rowid = row_cnt
                 row_attndis = abs(rowmaxid-rowid)
@@ -609,15 +683,15 @@ def mean_attn_distance_rel_one_sent_all_head(sent):
                 row_cnt += 1
             heads_ctn.append(sum(attndis_row_ctn)/len(attndis_row_ctn))
     res_abs = sum(heads_ctn)/144
-    res_rel = res_abs/len(attn_dense[0][0])
+    res_rel = res_abs/len(attn_merge[0][0])
     return res_rel
 
-def word_attn_distance(word,sent):
+def word_attn_distance(word,sent): # 20221013142932 # 损坏
     '''一个词在一句话中的144个head的平均关注距离'''
-    # 20221013142932
+    
     # 得知词在压缩矩阵的第几行
     attn_denser_res = attn_denser(sent)
-    attn_dense = attn_denser_res[0]
+    attn_merge = attn_denser_res[0]
     idmap = attn_denser_res[1]
     tokenized_sent = bert_tokenizer(sent,return_tensors='pt')
     word_idx = bert_tokenizer.convert_tokens_to_ids(word)
@@ -628,18 +702,17 @@ def word_attn_distance(word,sent):
     per_head_attn_dis_ctn = []
     for layer in range(12):
         for head in range(12):
-            word_attn_row = attn_dense[layer][head][word_rowid].tolist()
+            word_attn_row = attn_merge[layer][head][word_rowid].tolist()
             rowmaxid = word_attn_row.index(max(word_attn_row))
             row_attndis = abs(rowmaxid-word_rowid)
             per_head_attn_dis_ctn.append(row_attndis)
     mean_attn_dis = sum(per_head_attn_dis_ctn)/144
-    sent_len = len(attn_dense[0][0])
+    sent_len = len(attn_merge[0][0])
     mean_attn_dis_rel = mean_attn_dis/sent_len
     return mean_attn_dis_rel
 
-def word_attn_distance_sents(word,sents):
+def word_attn_distance_sents(word,sents): # 20221013142936
     ''' 指定词,在各个指定句子们的所有attention head(n×144)中, 分别的平均依存距离, 返回值是dict(), 记录每句话的结果'''
-    # 20221013142936
     dis_ctn = dict()
     sent_cnt = 0
     for sent in sents:
@@ -651,15 +724,14 @@ def word_attn_distance_sents(word,sents):
         sent_cnt += 1
     return dis_ctn
 
-def hidden_states_norm(sent,plot=False):
+def hidden_states_norm(sent,plot=False): # 20221013142939
     '''bert的13层hidden_states的范数的均值和标准差分布'''
-    # 20221013142939
     import statistics
     import matplotlib.pyplot as plt
     model_output = pipeline(sent)
     tokenized_sent = bert_tokenizer(sent)
     tokenized_tokens = bert_tokenizer.convert_ids_to_tokens(tokenized_sent['input_ids'])
-    hidden_states_all_layers = model_output.hidden_states
+    hidden_states_all_layers = model_output['hidden_states']
     layer_cnt = 0
     avg_norm_layers = []
     std_norm_layers = []
@@ -698,9 +770,8 @@ def hidden_states_norm(sent,plot=False):
         plt.show()
     return {'avg_norm_layers':avg_norm_layers,'std_norm_layers':std_norm_layers}
 
-def get_word_context_vecs_norm(word,sent):
+def get_word_context_vecs_norm(word,sent): # 20221013142945
     '''计算一个词(的第一个出现)在一句话中的13个范数的均值'''
-    # 20221013142945
     tokenized_sent = bert_tokenizer(sent,return_tensors='pt')
     input_ids = tokenized_sent['input_ids'][0].tolist()
     word_idx = bert_tokenizer.convert_tokens_to_ids(word)
@@ -716,9 +787,8 @@ def get_word_context_vecs_norm(word,sent):
     except ValueError:
         return None
 
-def mean_word_norm_sents(word,sents):
+def mean_word_norm_sents(word,sents): # 20221013142950
     '''计算一个词在众多句子中的词向量的范数'''
-    # 20221013142950
     res = dict()
     sent_cnt = 0
     for sent in sents:
@@ -728,9 +798,8 @@ def mean_word_norm_sents(word,sents):
         sent_cnt += 1
     return res
 
-def viz_scatter_bert_preemb(lablist):
+def viz_scatter_bert_preemb(lablist): # 20221013142953
     ''' 可视化BERT预训练词向量的空间分布, 输入为一个普通词表 '''
-    # 20221013142953
     labs = lablist[:]
     random.shuffle(labs)
     labids = bert_tokenizer.convert_tokens_to_ids(labs)
@@ -764,10 +833,9 @@ def viz_scatter_bert_preemb(lablist):
     return
 
 
-def get_sent_represent_vec_avg(sent):
+def get_sent_represent_vec_avg(sent): # 20221014105633
     '''获得一句话的句向量, 使用平均池化法'''
-    # 20221014105633
-    sent_mat = pipeline(sent)['last_hidden_state'][0]
+    sent_mat = pipeline(sent)['last_hidden_state']
     sent_sum = sent_mat.sum(axis=0)
     sent_avg = sent_sum/(sent_mat.shape[0])
     return sent_avg
