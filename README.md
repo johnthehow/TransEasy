@@ -100,9 +100,9 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 		1. prop_word_attention_distance
 		1. prop_word_most_attend_position
 	1. Statistics: with prefix **stat_**
-		3. stat_hidden_states_norm
-		5. stat_word_hidden_norm
-		6. stat_word_hidden_norm_in_sents
+		1. stat_hidden_states_norm
+		1. stat_word_hidden_norm
+		1. stat_word_hidden_norm_in_sents
 	1. Visualization: with prefix **viz_**
 		1. viz_hist_word_hidden_states
 		1. viz_barplot_attn_row
