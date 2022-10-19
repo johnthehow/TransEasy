@@ -84,7 +84,7 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 1. Functions are divided into groups:
 	1. Symbolic: with prefix **sym_**
 		1. sym_better_tokenizer: a better tokenizer of BERT
-		1. sym_bert_length_sents: select sentences with length determined by BERT tokenizer
+		1. sym_bert_length_sents_selector: select sentences with length determined by BERT tokenizer
 	1. Pre-Embedding: with prefix **preemb_**
 		1. preemb_word_preemb
 		1. preemb_similar_preemb
@@ -109,3 +109,4 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 		1. viz_scatter_bert_preemb
 	1. Pipeline: with prefix **pipe_**
 		1. pipe_pipeline
+	1. Ad Hoc: with prefix **adhoc_**

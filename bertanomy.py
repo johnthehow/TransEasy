@@ -5,7 +5,6 @@
 # 'huggingface'
 # 先BertTokenzer.convert_tokens_to_ids(sent), 再BertTokenzer.convert_ids_to_tokens(tokenids)并不一定能得到原来的句子, 1. 有的词可能被拆分 2.表外词转换回来统统为 [UKN]
 
-import math
 import torch
 import numpy
 import random
@@ -118,7 +117,7 @@ def sym_better_tokenizer(sent, trim=True, verbose=False): # 20221013142808
         print(f'wordno_to_pieceno_dict: {str(res["wordno_to_pieceno_dict"])}')
     return res
 
-def sym_bert_length_sents(sents,sent_len): # 20221013142825
+def sym_bert_length_sents_selector(word,sent_len,sent_max,n_shorter,corpus_path): # 20221013142808
     '''返回句子中, bert分词后为指定长度的句子'''
     # [解释]
         # 在不考虑[CLS]和[SEP]的情况下, 一个句子有三种句长
@@ -126,17 +125,42 @@ def sym_bert_length_sents(sents,sent_len): # 20221013142825
             # 2. wordpiece分词后的句长
             # 3. wordpiece分词后再合并的句长
         # 取第三种句长作为实际句长筛选的标准
+        # 因为BERT_TOKENIZER并不按照空格分词, 在sent_selector中预选长度为n的句子, 在BERT分词后, 长度可能大于n
+        # 所以, 从sent_selector中选取长度小于sent_len的句子, 从中会产生BERT分词后, 长度恰好等于sent_len的句子
+    # [输入]
+        # word: 句子中必须含有什么单词
+        # sent_len: 目标的句长(BERT标准)是多少
+        # sent_max: 最多返回多少个句子
+        # n_shorter: 向下取比目标句长短多少个词的句子(空格标准)作为句子来源
+        # corpus_path: 一行一句型语料库的位置
     # [依赖]
         # 依赖better_tokenizer 20221013142808
-    actual_len_sents = []
-    sent_cnt = 0
-    for sent in sents:
-        if len(sym_better_tokenizer(sent)['trim_merge_tokens']) == sent_len:
-            actual_len_sents.append(sent)
-            sent_cnt +=1
-            if sent_cnt%100 ==0:
-                print(f'processed {sent_cnt} sents')
-    return actual_len_sents
+    def space_length_sents_selector(word,sent_len,corpus_path):
+        with open(corpus_path, mode='r',encoding='utf-8') as corpus_file:
+            corpus_lines = corpus_file.readlines()
+            corpus_lines = [line.strip('\n').lower() for line in corpus_lines]
+            space_tokenized_corpus_lines = [line.split(sep=' ') for line in corpus_lines]
+            word_space_tokenized_corpus_lines = [tkline for tkline in space_tokenized_corpus_lines if word in tkline]
+            len_word_space_tokenized_corpus_lines = [tkline for tkline in word_space_tokenized_corpus_lines if len(tkline) == sent_len]
+            result_lines = [' '.join(tkline) for tkline in len_word_space_tokenized_corpus_lines]
+        return result_lines
+    def short_length_sents_selector(word,sent_len,n_shorter,corpus_path):
+        multi_len_sents = []
+        for i in range(n_shorter+1):
+            multi_len_sents += space_length_sents_selector(word, sent_len-i, corpus_path)
+        return multi_len_sents
+    def bert_length_sents_selector(sent_len,sents,sent_max):
+        bert_len_sents = []
+        sent_cnt = 0
+        for sent in sents:
+            if len(sym_better_tokenizer(sent)['trim_merge_tokens']) == sent_len and len(bert_len_sents) <= sent_max:
+                bert_len_sents.append(sent)
+                sent_cnt += 1
+        return bert_len_sents
+
+    multi_len_sents = short_length_sents_selector(word,sent_len,n_shorter,corpus_path)
+    bert_len_sents = bert_length_sents_selector(sent_len,multi_len_sents,sent_max)
+    return bert_len_sents
 
 # preemb_组
 def preemb_word_preemb(word): # 20221013142717
