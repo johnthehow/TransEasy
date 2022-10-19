@@ -80,7 +80,8 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 ## bertanomy.py
 ### Features
 1. Analysis of BERT hidden states, attention of words, sentences
-2. Functions are divided into groups:
+1. Document is in the remarks of the script
+1. Functions are divided into groups:
 	1. Symbolic: with prefix **sym_**
 		1. sym_better_tokenizer: a better tokenizer of BERT
 		1. sym_bert_length_sents: select sentences with length determined by BERT tokenizer
