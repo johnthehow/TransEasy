@@ -94,11 +94,12 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 		1. hidden_sent_hidden_states
 		1. hidden_word_hidden_states_in_sent
 		1. hidden_sent_hidden_vector
+	1. Property: with prefix **prop_**
+		1. prop_word_position_in_snet
+		1. prop_word_attention_distance
+		1. prop_word_most_attend_position
 	1. Statistics: with prefix **stat_**
-		1. stat_word_attention_distance
-		2. stat_word_most_attend_position
 		3. stat_hidden_states_norm
-		4. stat_word_position_in_sent
 		5. stat_word_hidden_norm
 		6. stat_word_hidden_norm_in_sents
 	1. Visualization: with prefix **viz_**
