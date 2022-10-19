@@ -77,4 +77,33 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 * **addnorm2_norm_hidden**: LayerNorm(addnorm2_add_hidden) 12×n×768
 * **manual_hiddens**: [preemb_norm_sum_emb, addnorm2_norm_hidden]
 
-
+## bertanomy.py
+### Features
+1. Analysis of BERT hidden states, attention of words, sentences
+2. Functions are divided into groups:
+	1. Symbolic: with prefix **sym_**
+		1. sym_better_tokenizer: a better tokenizer of BERT
+		1. sym_bert_length_sents: select sentences with length determined by BERT tokenizer
+	1. Pre-Embedding: with prefix **preemb_**
+		1. preemb_word_preemb
+		1. preemb_similar_preemb
+	1. Attention: with prefix **attn_**
+		1. attn_sent_attention_matrix
+		1. attn_word_attention_row
+	1. Hidden State: with prefix **hidden_**
+		1. hidden_sent_hidden_states
+		1. hidden_word_hidden_states_in_sent
+		1. hidden_sent_hidden_vector
+	1. Statistics: with prefix **stat_**
+		1. stat_word_attention_distance
+		2. stat_word_most_attend_position
+		3. stat_hidden_states_norm
+		4. stat_word_position_in_sent
+		5. stat_word_hidden_norm
+		6. stat_word_hidden_norm_in_sents
+	1. Visualization: with prefix **viz_**
+		1. viz_hist_word_hidden_states
+		1. viz_barplot_attn_row
+		1. viz_scatter_bert_preemb
+	1. Pipeline: with prefix **pipe_**
+		1. pipe_pipeline
