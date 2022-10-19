@@ -1,4 +1,4 @@
-# BERTET: BERT Explainability Toolkit
+# BERTBOX: BERT Explainability and Analysis Toolkit
 ## glassbox_bert.py
 ### Illustration of class variable groups
 ![glassbox_bert grouping](https://github.com/johnthehow/bertet/blob/master/figure1.png)
