@@ -1,4 +1,4 @@
-# 本脚本20221013162019
+# 本脚本ID: 20221013162019
 # attention是一行对应一个单词, 因为每行相加等于1, 列则不然
 # tensor.tolist()会产生误差
 # >>> bertanomy.bert_tokenizer.convert_tokens_to_string(['hugging','##face'])
@@ -175,9 +175,9 @@ def preemb_word_preemb(word): # 20221013142717
     word_preemb = we[word_idx]
     return word_preemb
 
-def preemb_similar_preemb(tensor_vec,tensor_target_vecs,topn):
+def preemb_similar_preemb(tensor_vec,tensor_target_vecs,topn): # 20221013142743
     ''' 寻找一个BERT词向量和BERT预训练词向量中最相似的那个'''
-    # 20221013142743
+    
     # 参数tensor_vec: 已知词向量
     # 参数tensor_target_vecs: BERT预训练词向量们
     # 参数topn: 返回前几个
