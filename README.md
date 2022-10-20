@@ -18,7 +18,7 @@
 
 ### Example Usage
 ```python
-from bertet import glassbox_bert
+from berteat import glassbox_bert
 instance = glassbox_bert.glassbox_bert('an example sentence here')
 
 ```
