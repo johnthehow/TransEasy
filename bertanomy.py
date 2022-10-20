@@ -132,7 +132,7 @@ def sym_bert_length_sents_selector(word,sent_len,sent_max,n_shorter,corpus_path)
         # sent_len: 目标的句长(BERT标准)是多少
         # sent_max: 最多返回多少个句子
         # n_shorter: 向下取比目标句长短多少个词的句子(空格标准)作为句子来源
-        # corpus_path: 一行一句型语料库的位置
+        # corpus_path: 一行一句型语料库的位置, 语料库需要预处理, 可使用cleanie工具进行处理
     # [依赖]
         # 依赖better_tokenizer 20221013142808
     def space_length_sents_selector(word,sent_len,corpus_path):
