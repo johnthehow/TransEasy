@@ -78,6 +78,12 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 * **manual_hiddens**: [preemb_norm_sum_emb, addnorm2_norm_hidden]
 
 ## bertanomy.py
+### Requirements
+1. PyTorch
+2. Numpy
+3. Matplotlib
+4. Transformers
+5. Sklearn
 ### Features
 1. Analysis of BERT hidden states, attention of words, sentences
 1. Document is in the remarks of the script
