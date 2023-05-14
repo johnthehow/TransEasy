@@ -359,13 +359,14 @@ def hidden_sent_hidden_vector(sent): # 20221014105633
     return sent_avg
 
 # stat_组
-def prop_word_attention_distance(word,sent,first=False,absolute=True): # 20221013142901
+def prop_word_attention_distance(word,sent,first=False,absolute=True,mean=False): # 20221013142901
     '''20221018163854 获得一个词在一句话中的关注距离, 只考虑trim_scale和merge后的情况'''
     # [输入]
-        # first开关: 是否值考虑一个词的第一个出现
+        # first开关: 是否只考虑一个词的第一个出现
         # absolute开关: 计算绝对关注距离还是相对关注距离(除以句长)
+        # mean开关: 是否将一个词的一个出现的144个依存距离平均为一个依存距离
     # [输出]
-        # (tensor) 一个词在一句话中 在所有head中的关注距离
+        # (tensor) 一个词在一句话中 在所有head中的关注距离: 一个词的一个出现在一句话中有144个依存距离
     # [依赖]
         # attn_word_attention_row
         # sym_better_tokenizer
@@ -374,7 +375,7 @@ def prop_word_attention_distance(word,sent,first=False,absolute=True): # 2022101
     attn_rows = attn_word_attention_row(word, sent, trim=True, merge=True, first=True)
     sent_len = len(sym_better_tokenizer(sent,trim=True)['trim_merge_tokens'])
     word_pos = prop_word_position_in_senet(word, sent,trim=True,merge=True,first=True)
-    attn_dis = torch.zeros(12,12,len(word_pos))
+    attn_dis = torch.zeros(12,12,len(word_pos)) # 承载变量
     attn_pos = []
     for lay in range(12):
         for hd in range(12):
@@ -384,14 +385,26 @@ def prop_word_attention_distance(word,sent,first=False,absolute=True): # 2022101
                 attn_dis[lay][hd][occur] = attn_dis_one_head
     if first == False:
         if absolute == True:
-            res = attn_dis
+            if mean == False:
+                res = attn_dis
+            else:
+                res = attn_dis.mean(dim=0).mean(dim=0)
         else:
-            res = res/sent_len
+            if mean == False:
+                res = attn_dis/sent_len
+            else:
+                res = (attn_dis/sent_len).mean(dim=0).mean(dim=0)
     else:
         if absolute == True:
-            res = attn_dis[:,:,0]
+            if mean == False:
+                res = attn_dis[:,:,0]
+            else:
+                res = attn_dis.mean()
         else:
-            res = res/sent_len
+            if mean == False:
+                res = attn_dis[:,:,0]/sent_len
+            else:
+                res = (attn_dis[:,:,0]/sent_len).mean()
     return res
 
 def prop_word_most_attend_position(word,sent,first=False): # 20221018214638
