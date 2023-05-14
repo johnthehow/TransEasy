@@ -162,7 +162,7 @@ def sym_bert_length_sents_selector(word,sent_len,sent_max,n_shorter,corpus_path)
     bert_len_sents = bert_length_sents_selector(sent_len,multi_len_sents,sent_max)
     return bert_len_sents
 
-# preemb_组
+# preemb_组: 该组函数返回值是词的预训练词向量(静态)
 def preemb_word_preemb(word): # 20221013142717
     '''获得一个词的bert预训练静态词向量'''
     # 依赖全局对象bert_model_20221013172250
@@ -193,7 +193,7 @@ def preemb_similar_preemb(tensor_vec,tensor_target_vecs,topn): # 20221013142743
         print(topcos_word)
     return
 
-# attn_组
+# attn_组: 该组函数的返回值围绕attention
 def attn_sent_attention_matrix(sent,trim_scale=False,merge=False): #20221018103823
     '''获得一句话的attention矩阵'''
     # [输入]
@@ -279,7 +279,7 @@ def attn_word_attention_row(word,sent,trim=True,merge=True,first=True): # 202210
     res = attn_matrices[:,:,word_row_no]
     return res    
 
-# hidden_组
+# hidden_组: 该组函数的返回值是hidden states
 def hidden_sent_hidden_states(sent,merge=False): # 20221017151232
     '''获得一句话的hidden states矩阵(13层)\nmerge开关: 是否将wordpiece组合的hidden states合并为一个\ntrim开关: 是否削去[CLS][SEP]对应的hidden states'''
     # [依赖]
