@@ -1,9 +1,12 @@
+# 脚本ID: 20230516014140
+# 注意: 
+
 from transformers import BertModel
 from transformers import BertTokenizer
 from transformers import logging
-logging.set_verbosity_error()
+from sklearn.manifold import TSNE
 
-sent = 'this is a pen a debraing pen'
+logging.set_verbosity_error()
 
 bert_model = BertModel.from_pretrained('bert-base-uncased') # 20230515193820
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') # 20230515193822
@@ -149,7 +152,7 @@ def txt_wordpieces(sent): # 20230515195614
 				1. 语义: 一个词在一句话中指定层的词向量
 				2. 数据类型: list
 				3. 数据结构: [tensor(768),tensor(768)....]
-				4. 样例文件/输出: 
+				4. 样例文件/输出: 20230516005057.pkl
 	[依赖]
 		1. 全局对象 bert_tokenizer # 20230515193822
 		2. 全局对象 bert_model # 20230515193820
@@ -165,7 +168,7 @@ def txt_wordpieces(sent): # 20230515195614
 		1. 
 		2.
 	[备注]
-		1.
+		1. 若一个词在句中有多次出现, 则它
 		2. 
 '''
 def emb_word_in_sent(word,sent,layer): # 20230515195618
@@ -175,3 +178,55 @@ def emb_word_in_sent(word,sent,layer): # 20230515195618
 	word_ids = [i for i,j in enumerate(bert_words) if j==word] # 数据结构: [4,8]
 	bert_output = bert_model(**bert_tokenized_sent,output_hidden_states=True,output_attentions=True) # 20230515194727 # 数据类型: dict # 数据结构: {key:tensor,key:tensor,key:tuple,key:tuple); 语义: 一句话的所有阶段结果, 详见NOTION: 20230515195127
 	return [bert_output['hidden_states'][layer][0][i] for i in word_ids] # 20230516004421 # 数据结构: [tensor, tensor]
+
+
+'''
+[函数注释]
+	[功能]
+		1. 主要功能: 
+		2. 额外功能
+	[设计图]
+		1. 索引码: 
+		2. 文件类型: 
+	[参数]
+		1. [参数1]
+			1. 数据类型: 
+			2. 数据结构: 
+			3. 参数类型: 
+			4. 语义: 
+			5. 取值范围: 
+			6. 获得来源: 
+			7. 样例文件/输入: 
+		2. [参数2]
+			1. 数据类型: 
+			2. 数据结构: 
+			3. 参数类型: 
+			4. 语义: 
+			5. 取值范围: 
+			6. 获得来源: 
+			7. 样例文件/输入: 
+	[用例]
+		1. [用例1]
+			1. 语句: 
+			2. 输出
+				1. 语义: 
+				2. 数据类型: 
+				3. 数据结构: 
+				4. 样例文件/输出: 
+	[依赖]
+		1. 
+		2. 
+	[已知问题]
+		1. [问题1标题]
+			1. 问题描述
+			2. 问题复现
+				1. 复现环境
+				2. 复现语句
+				3. 复现存档
+	[开发计划]
+		1. 
+		2.
+	[备注]
+		1.
+		2. 
+'''
