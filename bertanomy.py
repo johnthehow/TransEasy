@@ -268,14 +268,14 @@ def attn_word_attention_row(word,sent,trim=True,merge=True,first=True): # 202210
         # (tensor) 12×12×句长: 一个词在144个head中对应的所有attention行
     # [依赖]
         # attn_sent_attention_matrix
-        # prop_word_position_in_senet
+        # prop_word_position_in_sent
     # [被依赖]
         # attndistance(word,sent,attn_layer,attn_head): # 20221013
         # attnpos_batch(word:str,sents:list): # 20221013142910
     assert len(word.split(sep=' ')) == 1, print('\n[attn_word_attention_row]\nmultiword phrase not allowed')
 
     attn_matrices = attn_sent_attention_matrix(sent,trim_scale=trim,merge=merge)
-    word_row_no = prop_word_position_in_senet(word,sent,trim=trim,merge=merge,first=first)
+    word_row_no = prop_word_position_in_sent(word,sent,trim=trim,merge=merge,first=first)
     res = attn_matrices[:,:,word_row_no]
     return res    
 
@@ -305,7 +305,7 @@ def hidden_word_hidden_states_in_sent(word,sent,merge=False,first=False): # 2022
     # [依赖]
         # 依赖全局对象 bert_tokenizer
         # 依赖函数 hidden_sent_hidden_states
-        # 依赖函数 prop_word_position_in_senet
+        # 依赖函数 prop_word_position_in_sent
     # [返回]
         # 数据类型 tensor
         # 尺寸 13×n×768
@@ -323,30 +323,30 @@ def hidden_word_hidden_states_in_sent(word,sent,merge=False,first=False): # 2022
         else:
             if merge == True:
                 sent_hidden_states = hidden_sent_hidden_states(sent,merge=True)
-                word_pos = prop_word_position_in_senet(word,sent,trim=False,merge=True,first=True)
+                word_pos = prop_word_position_in_sent(word,sent,trim=False,merge=True,first=True)
                 res = sent_hidden_states[:,word_pos,:]
             else:
                 sent_hidden_states = hidden_sent_hidden_states(sent,merge=False)
-                word_pos = prop_word_position_in_senet(word,sent,trim=False,merge=False,first=True)
+                word_pos = prop_word_position_in_sent(word,sent,trim=False,merge=False,first=True)
                 res = sent_hidden_states[:,word_pos,:]
     else:
         if merge == True:
             if first == True:
                 sent_hidden_states = hidden_sent_hidden_states(sent,merge=True)
-                word_pos = prop_word_position_in_senet(word,sent,trim=False,merge=True,first=True)
+                word_pos = prop_word_position_in_sent(word,sent,trim=False,merge=True,first=True)
                 res = sent_hidden_states[:,word_pos,:]
             else:
                 sent_hidden_states = hidden_sent_hidden_states(sent,merge=True)
-                word_pos = prop_word_position_in_senet(word,sent,trim=False,merge=True,first=False)
+                word_pos = prop_word_position_in_sent(word,sent,trim=False,merge=True,first=False)
                 res = sent_hidden_states[:,word_pos,:]
         else:
             if first == True:
                 sent_hidden_states = hidden_sent_hidden_states(sent,merge=False)
-                word_pos = prop_word_position_in_senet(word,sent,trim=False,merge=False,first=True)
+                word_pos = prop_word_position_in_sent(word,sent,trim=False,merge=False,first=True)
                 res = sent_hidden_states[:,word_pos,:]
             else:
                 sent_hidden_states = hidden_sent_hidden_states(sent,merge=False)
-                word_pos = prop_word_position_in_senet(word,sent,trim=False,merge=False,first=False)
+                word_pos = prop_word_position_in_sent(word,sent,trim=False,merge=False,first=False)
                 res = sent_hidden_states[:,word_pos,:]
 
     return res
@@ -370,11 +370,11 @@ def prop_word_attention_distance(word,sent,first=False,absolute=True,mean=False)
     # [依赖]
         # attn_word_attention_row
         # sym_better_tokenizer
-        # prop_word_position_in_senet
+        # prop_word_position_in_sent
     assert len(word.split(sep=' ')) == 1, print('\n[prop_word_attention_distance]\nmore than one word not allowed')
     attn_rows = attn_word_attention_row(word, sent, trim=True, merge=True, first=True)
     sent_len = len(sym_better_tokenizer(sent,trim=True)['trim_merge_tokens'])
-    word_pos = prop_word_position_in_senet(word, sent,trim=True,merge=True,first=True)
+    word_pos = prop_word_position_in_sent(word, sent,trim=True,merge=True,first=True)
     attn_dis = torch.zeros(12,12,len(word_pos)) # 承载变量
     attn_pos = []
     for lay in range(12):
@@ -415,10 +415,10 @@ def prop_word_most_attend_position(word,sent,first=False): # 20221018214638
         # (tensor) 一个词在一句话中 在所有head中的最关注位置
     # [依赖]
         # attn_word_attention_row
-        # prop_word_position_in_senet
+        # prop_word_position_in_sent
     assert len(word.split(sep=' ')) == 1, print('\n[prop_word_most_attend_position]\nmore than one word not allowed')
     attn_rows = attn_word_attention_row(word, sent, trim=True, merge=True, first=True)
-    word_pos = prop_word_position_in_senet(word, sent,trim=True,merge=True,first=True)
+    word_pos = prop_word_position_in_sent(word, sent,trim=True,merge=True,first=True)
     attn_pos = torch.zeros(12,12,len(word_pos))
     for lay in range(12):
         for hd in range(12):
@@ -484,7 +484,7 @@ def stat_hidden_states_norm(sent,plot=False): # 20221013142939
         plt.show()
     return {'avg_norm_layers':avg_norm_layers,'std_norm_layers':std_norm_layers}
 
-def prop_word_position_in_senet(word,sent,trim=True,merge=True,first=True): # 20221017211829
+def prop_word_position_in_sent(word,sent,trim=True,merge=True,first=True): # 20221017211829
     '''返回一个词在句中的位置, 有11种情况, 用三个开关选择情况\ntrim开关: 句子是否削去句子两端的[CLS]和[SEP]\nmerge开关: 句子是否合并wordpiece\nfirst开关: 当词是wordpiece组合词时, 返回第一个词的位置还是所有位置, 仅当merge开关为false的情况生效, 仅对wordpiece组合词有意义'''
     # [输入值]
         # trim开关: 是否削去句子两端的[CLS]和[SEP]
@@ -516,7 +516,7 @@ def prop_word_position_in_senet(word,sent,trim=True,merge=True,first=True): # 20
     if is_simplex:
         if is_oov:
             pos = []
-            print('\n[prop_word_position_in_senet]\noov word, ignored')
+            print('\n[prop_word_position_in_sent]\noov word, ignored')
         else:
             if trim == True:
                 if merge == True:
@@ -600,11 +600,11 @@ def viz_hist_word_hidden_states(sent,word,merge=False,first=True): # 20221013142
     # [依赖]
         # 依赖函数 hidden_word_hidden_states_in_sent
         # 依赖函数 sym_better_tokenizer
-        # 依赖函数 prop_word_position_in_senet
+        # 依赖函数 prop_word_position_in_sent
     word_hiddens = hidden_word_hidden_states_in_sent(word,sent,merge=merge,first=first).permute(1,0,2)
     res_better_tokenizer = sym_better_tokenizer(sent,trim=False)
     tokenized_tokens = res_better_tokenizer['notrim_merge_tokens']
-    word_pos = prop_word_position_in_senet(word,sent,trim=False,merge=merge,first=first)
+    word_pos = prop_word_position_in_sent(word,sent,trim=False,merge=merge,first=first)
     pos_cnt = 0
     for occur in word_hiddens.detach().numpy():
         fig = plt.figure(figsize=(20,20))
@@ -637,9 +637,9 @@ def viz_barplot_attn_row(word,sent,layer,head): # 20221018205503
         plt.show()
     return
 
-def viz_scatter_bert_preemb(lablist): # 20221013142953
+def viz_scatter_bert_preemb(wordlist): # 20221013142953
     ''' 可视化BERT预训练词向量的空间分布, 输入为一个普通词表 '''
-    labs = lablist[:]
+    labs = wordlist[:]
     random.shuffle(labs)
     labids = bert_tokenizer.convert_tokens_to_ids(labs)
     word_embeddings_all = bert_model.embeddings.word_embeddings.weight
