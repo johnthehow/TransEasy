@@ -648,7 +648,7 @@ def viz_scatter_bert_preemb(wordlist): # 20221013142953
     # 将300维的词向量降维2维
         ndim = 2
         # 实例化TSNE器
-        tsne = TSNE(n_components=ndim,random_state=0)
+        tsne = TSNE(n_components=ndim,random_state=1)
         # 降维
         dim_reduced_vecs = tsne.fit_transform(word_embs)
         # 降维后的二维向量的横坐标

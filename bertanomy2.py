@@ -5,7 +5,7 @@ from transformers import BertModel
 from transformers import BertTokenizer
 from transformers import logging
 from sklearn.manifold import TSNE
-
+import matplotlib.pyplot as plt
 logging.set_verbosity_error()
 
 bert_model = BertModel.from_pretrained('bert-base-uncased') # 20230515193820
@@ -230,3 +230,39 @@ def emb_word_in_sent(word,sent,layer): # 20230515195618
 		1.
 		2. 
 '''
+def viz_scatter_tsne(embs,randstate):
+	def dim_reduce(embs,randstate):
+	# 将300维的词向量降维2维
+		ndim = 2
+		# 实例化TSNE器
+		tsne = TSNE(n_components=ndim,random_state=randstate)
+		# 降维
+		dim_reduced_vecs = tsne.fit_transform(embs)
+		# 降维后的二维向量的横坐标
+		x_vals = [v[0] for v in dim_reduced_vecs]
+		# 降维后的二维向量的纵坐标
+		y_vals = [v[1] for v in dim_reduced_vecs]
+		return x_vals,y_vals
+	embs = [i.detach().numpy() for i in embs]
+	fig = plt.figure()
+	ax = fig.add_subplot()
+	ax.scatter(*dim_reduce(embs,randstate))
+	plt.show()
+	return
+
+
+def tmp_word_sense_cloud(word,corpus_path,bert_layer,tsne_randstate):
+	sents = []
+	embs = []
+	corp = open(corpus_path,mode='r',encoding='utf-8')
+	while True:
+		try:
+			sent = next(corp)
+			if f' {word} ' in sent:
+				sents.append(sent)
+		except StopIteration:
+			break
+	for s in sents:
+		embs.append(emb_word_in_sent(word, s, bert_layer)[0])
+	viz_scatter_tsne(embs, tsne_randstate)
+	return

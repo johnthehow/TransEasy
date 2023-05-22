@@ -1,3 +1,7 @@
+# 使用方法
+# from berteat import glassbox_bert
+# instance = glassbox_bert.glassbox_bert('an example sentence here')
+
 import torch
 from torch import nn
 from transformers import BertModel
@@ -36,6 +40,8 @@ class glassbox_bert:
         self.preemb_pos_emb = self.model.embeddings.position_embeddings.weight[:self.sym_seq_len] # n*768
         self.preemb_seg_emb = self.model.embeddings.token_type_embeddings.weight[0].repeat(self.sym_seq_len,1) # n*768
         self.preemb_sum_emb = self.preemb_word_emb + self.preemb_pos_emb + self.preemb_seg_emb # n*768
+        self.preemb_norm_weight = self.model.embeddings.LayerNorm.weight # 768
+        self.preemb_norm_bias = self.model.embeddings.LayerNorm.bias # 768
         self.preemb_norm_sum_emb = self.model.embeddings.LayerNorm(self.preemb_sum_emb) # n*768
 
 
@@ -65,6 +71,8 @@ class glassbox_bert:
         self.addnorm1_dense_hidden = torch.zeros(12,self.sym_seq_len,768)
         self.addnorm1_add_hidden = torch.zeros(12,self.sym_seq_len,768)
         self.addnorm1_norm_hidden = torch.zeros(12,self.sym_seq_len,768)
+        self.addnorm1_norm_weight = torch.zeros(12,768)
+        self.addnorm1_norm_bias = torch.zeros(12,768)
 
         # 存储空间预划分: Feedforward组/ffnn组
         self.ffnn_dense_weight = torch.zeros(12,768,3072)
@@ -78,6 +86,8 @@ class glassbox_bert:
         self.addnorm2_dense_hidden = torch.zeros(12,self.sym_seq_len,768)
         self.addnorm2_add_hidden = torch.zeros(12,self.sym_seq_len,768)
         self.addnorm2_norm_hidden = torch.zeros(12,self.sym_seq_len,768)
+        self.addnorm2_norm_weight = torch.zeros(12, 768)
+        self.addnorm2_norm_bias = torch.zeros(12, 768)
 
         # # 存储空间预划分: 多层结果承载变量/output组
         self.manual_hiddens = torch.zeros(13,self.sym_seq_len,768)
@@ -112,17 +122,23 @@ class glassbox_bert:
             self.addnorm1_dense_hidden[lay] = self.selfattn_contvec_concat[lay]@self.addnorm1_dense_weight[lay]+self.addnorm1_dense_bias[lay] # n*768*768*768 = n*768
             self.addnorm1_add_hidden[lay] = self.addnorm1_dense_hidden[lay] + self.manual_hiddens[lay] # n*768
             self.addnorm1_norm_hidden[lay] = self.model.encoder.layer[lay].attention.output.LayerNorm(self.addnorm1_add_hidden[lay]) # n*768
+            self.addnorm1_norm_weight[lay] = self.model.encoder.layer[lay].attention.output.LayerNorm.weight
+            self.addnorm1_norm_bias[lay] = self.model.encoder.layer[lay].attention.output.LayerNorm.bias
+
             # Feedforward组/ffnn组
             self.ffnn_dense_weight[lay] = self.model.encoder.layer[lay].intermediate.dense.weight.T # 768*3072 # 关键步骤, weight一定要转置
             self.ffnn_dense_bias[lay] = self.model.encoder.layer[lay].intermediate.dense.bias # 3072
             self.ffnn_dense_hidden[lay] = self.addnorm1_norm_hidden[lay]@self.ffnn_dense_weight[lay]+self.ffnn_dense_bias[lay] # n*768*768*3072 = n*3072
             self.ffnn_dense_act[lay] = self.model.encoder.layer[lay].intermediate.intermediate_act_fn(self.ffnn_dense_hidden[lay]) # n*3072
+            
             # Add & Norm 2组/addnorm2组
             self.addnorm2_dense_weight[lay] = self.model.encoder.layer[lay].output.dense.weight.T # 3072*768 # 关键步骤, weight一定要转置
             self.addnorm2_dense_bias[lay] = self.model.encoder.layer[lay].output.dense.bias # 768
             self.addnorm2_dense_hidden[lay] = self.ffnn_dense_act[lay]@self.addnorm2_dense_weight[lay]+self.addnorm2_dense_bias[lay] # n*768
             self.addnorm2_add_hidden[lay] = self.addnorm2_dense_hidden[lay] + self.addnorm1_norm_hidden[lay] # n*768
             self.addnorm2_norm_hidden[lay] = self.model.encoder.layer[lay].output.LayerNorm(self.addnorm2_add_hidden[lay]) # n*768
+            self.addnorm2_norm_weight[lay] = self.model.encoder.layer[lay].output.LayerNorm.weight
+            self.addnorm2_norm_bias[lay] = self.model.encoder.layer[lay].output.LayerNorm.bias
             self.manual_hiddens[lay+1] = self.addnorm2_norm_hidden[lay]
 
         # Pipeline组/pipline组
