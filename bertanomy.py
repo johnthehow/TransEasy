@@ -359,7 +359,7 @@ def hidden_sent_hidden_vector(sent): # 20221014105633
     return sent_avg
 
 # stat_组
-def prop_word_attention_distance(word,sent,first=False,absolute=True,mean=False): # 20221013142901
+def prop_word_attention_distance(word,sent,first=False,absolute=True,mean=False,direction=False): # 20221013142901
     '''20221018163854 获得一个词在一句话中的关注距离, 只考虑trim_scale和merge后的情况'''
     # [输入]
         # first开关: 是否只考虑一个词的第一个出现
@@ -381,8 +381,12 @@ def prop_word_attention_distance(word,sent,first=False,absolute=True,mean=False)
         for hd in range(12):
             for occur in range(len(word_pos)):
                 max_pos = torch.argmax(attn_rows[lay][hd][occur]).item()
-                attn_dis_one_head = abs(max_pos-word_pos[occur])
-                attn_dis[lay][hd][occur] = attn_dis_one_head
+                if direction == False:
+                    attn_dis_one_head = abs(max_pos-word_pos[occur])
+                    attn_dis[lay][hd][occur] = attn_dis_one_head
+                else:
+                    attn_dis_one_head = max_pos-word_pos[occur]
+                    attn_dis[lay][hd][occur] = attn_dis_one_head
     if first == False:
         if absolute == True:
             if mean == False:
@@ -405,6 +409,8 @@ def prop_word_attention_distance(word,sent,first=False,absolute=True,mean=False)
                 res = attn_dis[:,:,0]/sent_len
             else:
                 res = (attn_dis[:,:,0]/sent_len).mean()
+    res = res.squeeze()
+    res = res.detach().numpy()
     return res
 
 def prop_word_most_attend_position(word,sent,first=False): # 20221018214638
@@ -690,6 +696,18 @@ def pipe_pipeline(sent): # 20221013142729
     for i in result:
         print(f'{i}: {type(result[i])}')
     return result
+
+
+# sent应当是 [str, str]的形式
+def stat_mean_attention_distance_sent(sent):
+    string_sent = ' '.join(sent)
+    sent_len = len(sent)
+    ddmatrixs = []
+    for word in sent:
+        ddmatrix = prop_word_attention_distance(word, string_sent, first=True, absolute=True,mean=False,direction=False)
+        ddmatrixs.append(ddmatrix)
+    return sum(ddmatrixs)/sent_len
+
 
 
 
