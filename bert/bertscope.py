@@ -1,7 +1,3 @@
-# 使用方法
-# from berteat import glassbox_bert
-# instance = glassbox_bert.glassbox_bert('an example sentence here')
-
 import torch
 from torch import nn
 from transformers import BertModel
@@ -10,7 +6,7 @@ from transformers import BertTokenizer
 bert_model = BertModel.from_pretrained('bert-base-uncased')
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
-class glassbox_bert:
+class analyzer:
     '''输出BERT所有的前向传播组表征, 共32项'''
     # 依赖全局对象bert_model (速度考虑, 避免每分析一句话调用一次模型)
     # 依赖全局对象bert_tokenizer (速度考虑, 避免每分析一句话调用一次模型)

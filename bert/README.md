@@ -1,11 +1,11 @@
-# BERTEAT: BERT Explainability and Analysis Toolkit
-## glassbox_bert.py
+# TransEasy: BERT
+## bertscope
 ### Illustration of class variable groups
-![glassbox_bert grouping](https://github.com/johnthehow/bertet/blob/master/figure1.png)
+![bertscope variables grouping](https://github.com/johnthehow/bertet/blob/master/figure1.png)
 ### Features
-1. The glassbox_bert class returns an instance which encloses both data and model aftering being feed with a sentence
-2. Unlike Huggingface BertModel instance, with glassbox_bert you can easily obtain all intermediate representations (45 in total) you can ever imagine, not just Attention and Hidden states.
-3. The components in glassbox_bert are highly aligned with the concepts of Transformer encoder as in Vaswani et al. 2017.
+1. The bertscope class returns an instance which encloses both data and model aftering being feed with a sentence
+2. Unlike Huggingface BertModel instance, with bertscope you can easily obtain all intermediate representations (45 in total) you can ever imagine, not just Attention and Hidden states.
+3. The components in bertscope are highly aligned with the concepts of Transformer encoder as in Vaswani et al. 2017.
 4. All components (as class variables) are divied into six groups, namely:
 	1. Symbolic: with class variable prefix ***sym_***:
 	1. Pre-Embedding: with class variable prefix ***preemb_***:
@@ -18,8 +18,8 @@
 
 ### Example Usage
 ```python
-from berteat import glassbox_bert
-instance = glassbox_bert.glassbox_bert('an example sentence here')
+from transeasy.bert import bertscope
+instance = bertscope.analyzer('an example sentence here')
 
 ```
 
@@ -30,7 +30,7 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 3. The activation function of FFNN is gelu
 4. The Softmax in Multi-Head Self-Attention is parameterized with axis=-1
 
-### A complete list of class variables of glassbox_bert
+### A complete list of class variables of bertscope
 * ****model****: a huggingface BertModel instance
 * **tokenizer**: a huggingface BertTokenizer instance
 * **pipeline_res**: pipeline result of BertModel
@@ -77,42 +77,42 @@ instance = glassbox_bert.glassbox_bert('an example sentence here')
 * **addnorm2_norm_hidden**: LayerNorm(addnorm2_add_hidden) 12×n×768
 * **manual_hiddens**: [preemb_norm_sum_emb, addnorm2_norm_hidden]
 
-## bertanomy.py
+## bertplus / bertplus_hier / bertplus_fast
 ### Requirements
 1. PyTorch
 2. Numpy
 3. Matplotlib
 4. Transformers
 5. Sklearn
-### Features
-1. Analysis of BERT hidden states, attention of words, sentences
-1. Document is in the remarks of the script
-1. Functions are divided into groups:
-	1. Symbolic: with prefix **sym_**
-		1. sym_better_tokenizer: a better tokenizer of BERT
-		1. sym_bert_length_sents_selector: select sentences with length determined by BERT tokenizer
-	1. Pre-Embedding: with prefix **preemb_**
-		1. preemb_word_preemb
-		1. preemb_similar_preemb
-	1. Attention: with prefix **attn_**
-		1. attn_sent_attention_matrix
-		1. attn_word_attention_row
-	1. Hidden State: with prefix **hidden_**
-		1. hidden_sent_hidden_states
-		1. hidden_word_hidden_states_in_sent
-		1. hidden_sent_hidden_vector
-	1. Property: with prefix **prop_**
-		1. prop_word_position_in_snet
-		1. prop_word_attention_distance
-		1. prop_word_most_attend_position
-	1. Statistics: with prefix **stat_**
-		1. stat_hidden_states_norm
-		1. stat_word_hidden_norm
-		1. stat_word_hidden_norm_in_sents
-	1. Visualization: with prefix **viz_**
-		1. viz_hist_word_hidden_states
-		1. viz_barplot_attn_row
-		1. viz_scatter_bert_preemb
-	1. Pipeline: with prefix **pipe_**
-		1. pipe_pipeline
-	1. Ad Hoc: with prefix **adhoc_**
+### Usage(bertplus_hier)
+1. attentions
+	1.1 raw attention matrices (tensor 12*12*n*n)
+		```python
+		from transeasy.bert import bertplus_hier
+		analysis = bertplus_hier.analyzer('sentence to be analyzed')
+		analysis.bert.attentions.raw
+		```
+	1.2 attention matrices without [CLS] and [SEP] token
+		```python
+		from transeasy.bert import bertplus_hier
+		analysis = bertplus_hier.analyzer('sentence to be analyzed')
+		analysis.bert.attentions.nosep
+		```
+	1.3 attention matrices without [CLS] and [SEP] token and linearly scaled
+		```python
+		from transeasy.bert import bertplus_hier
+		analysis = bertplus_hier.analyzer('sentence to be analyzed')
+		analysis.bert.attentions.nosep_linscale
+		```
+	1.4 attention matrices without [CLS] and [SEP] token and softmax scaled
+		```python
+		from transeasy.bert import bertplus_hier
+		analysis = bertplus_hier.analyzer('sentence to be analyzed')
+		analysis.bert.attentions.nosep_softmax_scale
+		```
+	1.5 reduced attention: attention matrices without [CLS] and [SEP] token and linearly scaled with merged attention row and cols
+		```python
+		from transeasy.bert import bertplus_hier
+		analysis = bertplus_hier.analyzer('sentence to be analyzed')
+		analysis.bert.attentions.reduced
+		```

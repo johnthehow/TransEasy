@@ -33,112 +33,6 @@ class pre_tokenizations:
 		# self.nosep_softmaxscale = Softmax(dim=-1)(self.nosep) # tensor
 		# self.space_wordpiece_posmap = self.wordpiece_mapping(self.space_tokenization_lower) # {int:[int,int], int:[int,int]}
 		# self.reduced_attention = self.reduced_attention_nosep_linscale(self.space_tokenization_lower) # tensor
-	
-	# def wordpiece_mapping(self,target_tokens):
-	# 	'''[int,int]'''
-	# 	ud_sent = target_tokens
-	# 	wp_sent = self.wordpieces_nosep
-	# 	ud_cnt = 0
-	# 	wp_cnt = 0
-	# 	wp_buffer = []
-	# 	idmap_list = []
-	# 	while True:
-	# 		try:
-	# 			ud_pop = ud_sent[ud_cnt]
-	# 			wp_pop = wp_sent[wp_cnt]
-	# 			if ud_pop == wp_pop:
-	# 				idmap_list.append(ud_cnt)
-	# 				ud_cnt += 1
-	# 				wp_cnt += 1
-	# 			else:
-	# 				wp_buffer.append(wp_pop.replace('##',''))
-	# 				idmap_list.append(ud_cnt)
-	# 				if ''.join(wp_buffer) != ud_pop:
-	# 					wp_cnt += 1
-	# 				else:
-	# 					wp_cnt += 1
-	# 					ud_cnt += 1
-	# 					wp_buffer = []
-	# 		except IndexError:
-	# 			break
-	# 	idmap_dict = dict()
-	# 	for i in range(max(idmap_list)+1):
-	# 		idmap_dict[i] = [idx for idx,j in enumerate(idmap_list) if j==i]
-	# 	return idmap_dict
-
-	# def reduced_attention_nosep_linscale(self,target_tokens):
-	# 	posmap = self.wordpiece_mapping(self.space_tokenization_lower)
-	# 	num_rows = len(posmap.keys())
-	# 	num_cols = sum([len(posmap[x]) for x in posmap if isinstance(posmap[x], list)])
-	# 	row_reduced_attention = torch.empty(12,12,num_rows,num_cols)
-	# 	row_col_reduced_attention = torch.empty(12,12,num_rows,num_rows)
-	# 	for lay in range(12):
-	# 		for head in range(12):
-	# 			for pair in posmap.items():
-	# 				row_reduced_attention[lay][head][pair[0]] = (torch.index_select(self.nosep_linscale[lay][head], -2, torch.tensor(pair[1])).sum(axis=-2))/len(pair[1])
-	# 	for lay in range(12):
-	# 		for head in range(12):
-	# 			for pair in posmap.items():
-	# 				row_col_reduced_attention[lay][head][:,pair[0]] = torch.index_select(row_reduced_attention[lay][head], -1, torch.tensor(pair[1])).sum(axis=-1)
-	# 	return row_col_reduced_attention
-	
-	# def viz_bert_attentions(self,lay,head):
-	# 	fig = plt.figure()
-	# 	ax = fig.subplots()
-	# 	data = self.bert_attentions[lay][head].detach().numpy()
-	# 	gcf = ax.matshow(data,cmap='Greens')
-	# 	ax.set_xticks(range(data.shape[0]))
-	# 	ax.set_yticks(range(data.shape[1]))
-	# 	xticklabels = [str(i)+' '+j for i,j in zip(range(data.shape[0]), self.wordpieces)]
-	# 	yticklabels = [j+' '+str(i) for i,j in zip(range(data.shape[0]), self.wordpieces)]
-	# 	ax.set_xticklabels(xticklabels,rotation=45, ha='left')
-	# 	ax.set_yticklabels(yticklabels)
-	# 	ax.set_xlabel(f'Layer-{lay+1}, Head-{head+1}')
-	# 	bar = plt.gcf().colorbar(gcf)
-	# 	plt.show()
-	# 	plt.close()
-	# 	return
-
-	# def viz_bert_attentions_nosep_linscale(self,lay,head):
-	# 	fig = plt.figure()
-	# 	ax = fig.subplots()
-	# 	data = self.nosep_linscale[lay][head].detach().numpy()
-	# 	gcf = ax.matshow(data,cmap='Greens')
-	# 	ax.set_xticks(range(data.shape[0]))
-	# 	ax.set_yticks(range(data.shape[1]))
-	# 	ax.set_xticklabels(self.wordpieces_nosep, rotation=45)
-	# 	ax.set_yticklabels(self.wordpieces_nosep)
-	# 	bar = plt.gcf().colorbar(gcf)
-	# 	plt.show()
-	# 	plt.close()
-	# 	return
-
-	# def viz_bert_attentions_nosep_softmaxscale(self,lay,head):
-	# 	fig = plt.figure()
-	# 	ax = fig.subplots()
-	# 	data = self.nosep_softmaxscale[lay][head].detach().numpy()
-	# 	gcf = ax.matshow(data,cmap='Greens')
-	# 	ax.set_xticks(range(data.shape[0]))
-	# 	ax.set_yticks(range(data.shape[1]))
-	# 	ax.set_xticklabels(self.wordpieces_nosep, rotation=45)
-	# 	ax.set_yticklabels(self.wordpieces_nosep)
-	# 	bar = plt.gcf().colorbar(gcf)
-	# 	plt.show()
-	# 	plt.close()
-	# 	return
-
-	# def viz_bert_attentions_nosep_linscale_reduced(self,lay,head):
-	# 	fig = plt.figure()
-	# 	ax = fig.subplots()
-	# 	data = self.reduced_attention[lay][head].detach().numpy()
-	# 	gcf = ax.matshow(data,cmap='Greens')
-	# 	ax.set_xticks(range(data.shape[0]))
-	# 	ax.set_yticks(range(data.shape[1]))
-	# 	ax.set_xticklabels(self.space_tokenization, rotation=45)
-	# 	ax.set_yticklabels(self.space_tokenization)
-	# 	bar = plt.gcf().colorbar(gcf)
-	# 	plt.show()
-	# 	plt.close()
 
 class bert_tokenizations:
 	def __init__(self, sent):
@@ -222,6 +116,69 @@ class attentions:
 				for pair in posmap.items():
 					row_col_reduced_attention[lay][head][:,pair[0]] = torch.index_select(row_reduced_attention[lay][head], -1, torch.tensor(pair[1])).sum(axis=-1)
 		return row_col_reduced_attention
+	
+class viz:
+	def __init__(self,sent):
+		self.attns = attentions(sent)
+		self.tokens = tokenizations(sent)
+
+	def raw(self,lay,head):
+		fig = plt.figure()
+		ax = fig.subplots()
+		data = self.attns.raw[lay][head].detach().numpy()
+		gcf = ax.matshow(data,cmap='Greens')
+		ax.set_xticks(range(data.shape[0]))
+		ax.set_yticks(range(data.shape[1]))
+		xticklabels = [str(i)+' '+j for i,j in zip(range(data.shape[0]), self.tokens.bert.wordpieces)]
+		yticklabels = [j+' '+str(i) for i,j in zip(range(data.shape[0]), self.tokens.bert.wordpieces)]
+		ax.set_xticklabels(xticklabels,rotation=45, ha='left')
+		ax.set_yticklabels(yticklabels)
+		ax.set_xlabel(f'Layer-{lay+1}, Head-{head+1}')
+		bar = plt.gcf().colorbar(gcf)
+		plt.show()
+		plt.close()
+		return
+
+	def nosep_linscale(self,lay,head):
+		fig = plt.figure()
+		ax = fig.subplots()
+		data = self.attns.nosep_linscale[lay][head].detach().numpy()
+		gcf = ax.matshow(data,cmap='Greens')
+		ax.set_xticks(range(data.shape[0]))
+		ax.set_yticks(range(data.shape[1]))
+		ax.set_xticklabels(self.tokens.bert.wordpieces_nosep, rotation=45)
+		ax.set_yticklabels(self.tokens.bert.wordpieces_nosep)
+		bar = plt.gcf().colorbar(gcf)
+		plt.show()
+		plt.close()
+		return
+
+	def nosep_softmaxscale(self,lay,head):
+		fig = plt.figure()
+		ax = fig.subplots()
+		data = self.attns.nosep_softmaxscale[lay][head].detach().numpy()
+		gcf = ax.matshow(data,cmap='Greens')
+		ax.set_xticks(range(data.shape[0]))
+		ax.set_yticks(range(data.shape[1]))
+		ax.set_xticklabels(self.tokens.bert.wordpieces_nosep, rotation=45)
+		ax.set_yticklabels(self.tokens.bert.wordpieces_nosep)
+		bar = plt.gcf().colorbar(gcf)
+		plt.show()
+		plt.close()
+		return
+
+	def nosep_linscale_reduced(self,lay,head):
+		fig = plt.figure()
+		ax = fig.subplots()
+		data = self.attns.reduced[lay][head].detach().numpy()
+		gcf = ax.matshow(data,cmap='Greens')
+		ax.set_xticks(range(data.shape[0]))
+		ax.set_yticks(range(data.shape[1]))
+		ax.set_xticklabels(self.tokens.pre.space_tokenization_lower, rotation=45)
+		ax.set_yticklabels(self.tokens.pre.space_tokenization_lower)
+		bar = plt.gcf().colorbar(gcf)
+		plt.show()
+		plt.close()
 
 class bert:
 	def __init__(self,sent):
@@ -234,14 +191,14 @@ class tokenizations:
 		self.pre = pre_tokenizations(sent)
 		self.bert = bert_tokenizations(sent)
 
-class sent_analyzer:
+class analyzer:
 	def __init__(self,sent):
 		self.tokenization = tokenizations(sent)
 		self.bert = bert(sent)
-
+		self.viz = viz(sent)
 
 sent = 'mary had a little lamb, its fleece was white as snow'
 
-analysis = sent_analyzer(sent)
+analysis = analyzer(sent)
 
 print('done')
