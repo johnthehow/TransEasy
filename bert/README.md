@@ -135,9 +135,10 @@ instance = bertscope.analyzer('an example sentence here')
 		```python
 		from transeasy.bert import bertplus_hier
 		analysis = bertplus_hier.analyzer('sentence to be analyzed')
-		analysis.viz.raw(layer,head)
+		analysis.viz.raw(layer, head)
 		```
 	1. attention matrices without [CLS] and [SEP] token
+		```python
 		from transeasy.bert import bertplus_hier
 		analysis = bertplus_hier.analyzer('sentence to be analyzed')
 		analysis.viz.raw(layer, head)
