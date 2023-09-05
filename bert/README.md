@@ -86,7 +86,7 @@ instance = bertscope.analyzer('an example sentence here')
 5. Sklearn
 ### Usage(bertplus_hier)
 1. attentions
-	1.1 raw attention matrices (tensor 12*12*n*n)
+	1.1 raw attention matrices
 		```python
 		from transeasy.bert import bertplus_hier
 		analysis = bertplus_hier.analyzer('sentence to be analyzed')
