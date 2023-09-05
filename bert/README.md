@@ -1,7 +1,7 @@
 # TransEasy: BERT
 ## bertscope
 ### Illustration of class variable groups
-![bertscope variables grouping](https://github.com/johnthehow/bertet/blob/master/figure1.png)
+![bertscope variables grouping](https://github.com/johnthehow/TransEasy/blob/master/bert/figure1.png)
 ### Features
 1. The bertscope class returns an instance which encloses both data and model aftering being feed with a sentence
 2. Unlike Huggingface BertModel instance, with bertscope you can easily obtain all intermediate representations (45 in total) you can ever imagine, not just Attention and Hidden states.
