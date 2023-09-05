@@ -117,3 +117,40 @@ instance = bertscope.analyzer('an example sentence here')
 		analysis = bertplus_hier.analyzer('sentence to be analyzed')
 		analysis.bert.attentions.reduced
 		```
+1. hidden states
+	1. last layer hidden state
+		```python
+		from transeasy.bert import bertplus_hier
+		analysis = bertplus_hier.analyzer('sentence to be analyzed')
+		analysis.bert.hidden_states.last
+		```
+	1. all layer hidden states (12 layers)
+		```python
+		from transeasy.bert import bertplus_hier
+		analysis = bertplus_hier.analyzer('sentence to be analyzed')
+		analysis.bert.hidden_states.all
+		```
+1. visualizations
+	1. raw attentions
+		```python
+		from transeasy.bert import bertplus_hier
+		analysis = bertplus_hier.analyzer('sentence to be analyzed')
+		analysis.viz.raw(layer,head)
+		```
+	1. attention matrices without [CLS] and [SEP] token
+		from transeasy.bert import bertplus_hier
+		analysis = bertplus_hier.analyzer('sentence to be analyzed')
+		analysis.viz.raw(layer, head)
+		```
+	1. attention matrices without [CLS] and [SEP] token and linearly scaled	
+		```python
+		from transeasy.bert import bertplus_hier
+		analysis = bertplus_hier.analyzer('sentence to be analyzed')
+		analysis.viz.nosep_linscale(layer, head)
+		```	
+	1. reduced attention: attention matrices without [CLS] and [SEP] token and linearly scaled with merged attention row and cols
+		```python
+		from transeasy.bert import bertplus_hier
+		analysis = bertplus_hier.analyzer('sentence to be analyzed')
+		analysis.viz.nosep_linscale_reduced(layer, head)
+		```	
