@@ -86,31 +86,31 @@ instance = bertscope.analyzer('an example sentence here')
 5. Sklearn
 ### Usage(bertplus_hier)
 1. attentions
-	1.1 raw attention matrices
+	1. raw attention matrices
 		```python
 		from transeasy.bert import bertplus_hier
 		analysis = bertplus_hier.analyzer('sentence to be analyzed')
 		analysis.bert.attentions.raw
 		```
-	1.2 attention matrices without [CLS] and [SEP] token
+	1. attention matrices without [CLS] and [SEP] token
 		```python
 		from transeasy.bert import bertplus_hier
 		analysis = bertplus_hier.analyzer('sentence to be analyzed')
 		analysis.bert.attentions.nosep
 		```
-	1.3 attention matrices without [CLS] and [SEP] token and linearly scaled
+	1. attention matrices without [CLS] and [SEP] token and linearly scaled
 		```python
 		from transeasy.bert import bertplus_hier
 		analysis = bertplus_hier.analyzer('sentence to be analyzed')
 		analysis.bert.attentions.nosep_linscale
 		```
-	1.4 attention matrices without [CLS] and [SEP] token and softmax scaled
+	1. attention matrices without [CLS] and [SEP] token and softmax scaled
 		```python
 		from transeasy.bert import bertplus_hier
 		analysis = bertplus_hier.analyzer('sentence to be analyzed')
 		analysis.bert.attentions.nosep_softmax_scale
 		```
-	1.5 reduced attention: attention matrices without [CLS] and [SEP] token and linearly scaled with merged attention row and cols
+	1. reduced attention: attention matrices without [CLS] and [SEP] token and linearly scaled with merged attention row and cols
 		```python
 		from transeasy.bert import bertplus_hier
 		analysis = bertplus_hier.analyzer('sentence to be analyzed')
