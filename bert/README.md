@@ -1,7 +1,7 @@
 # TransEasy: BERT
 ## bertscope
 ### Illustration of class variable groups
-![bertscope variables grouping](https://github.com/johnthehow/TransEasy/blob/master/bert/figure1.png)
+![bertscope variables grouping](https://github.com/johnthehow/TransEasy/blob/master/bert/bertscope_demo.png)
 ### Features
 1. The bertscope class returns an instance which encloses both data and model aftering being feed with a sentence
 2. Unlike Huggingface BertModel instance, with bertscope you can easily obtain all intermediate representations (45 in total) you can ever imagine, not just Attention and Hidden states.
@@ -78,12 +78,13 @@ instance = bertscope.analyzer('an example sentence here')
 * **manual_hiddens**: [preemb_norm_sum_emb, addnorm2_norm_hidden]
 
 ## bertplus / bertplus_hier / bertplus_fast
+### bertplus visualization
+![bertplus visualization demo reduced](https://github.com/johnthehow/TransEasy/blob/master/bert/bertplus_demo.png)
 ### Requirements
 1. PyTorch
 2. Numpy
 3. Matplotlib
 4. Transformers
-5. Sklearn
 ### Usage(bertplus_hier)
 1. attentions
 	1. raw attention matrices

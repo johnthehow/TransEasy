@@ -197,7 +197,7 @@ class analyzer:
 		self.bert = bert(sent)
 		self.viz = viz(sent)
 
-sent = 'mary had a little lamb, its fleece was white as snow'
+sent = 'The salesman gave us a demo of the vacuum cleaner, and it seemed to work very well.'
 
 analysis = analyzer(sent)
 
