@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 # 一次句子分析, 多个函数共享
 # 统一用torch.tensor表征所有容器
 
-proxies = {'http':'http://127.0.0.1:1080','https':'https://127.0.0.1:1080'}
 
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 model = BertModel.from_pretrained('bert-base-uncased')
