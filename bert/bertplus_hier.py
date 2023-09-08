@@ -290,9 +290,9 @@ class attentions_noclssep_scale_linear_reduced:
 
 # 依赖: class:tokenizations
 class analyzer:
-	def __init__(self,sent):
+	def __init__(self,sent, custom_tokenization):
 		self.tokenization = tokenizations(sent)
-		self.tokenization.custom = ud_sent
+		self.tokenization.custom = custom_tokenization
 		self._bertout = bert_outputs(self.tokenization.bert.obj)
 		self.hidden_states = hidden_states(self._bertout)
 		self.attentions = attentions(self._bertout,self.tokenization)
@@ -301,7 +301,7 @@ class analyzer:
 
 sent = 'The salesman gave us a demo of the Huggingface course, and it is a seemmingly working very well.'
 ud_sent = ['the', 'salesman', 'gave', 'us', 'a', 'demo', 'of', 'the', 'huggingface', 'course', ',', 'and', 'it', 'is', 'a', 'seemmingly', 'working', 'very', 'well', '.']
-analysis = analyzer(sent)
+analysis = analyzer(sent, ud_sent)
 
 res = analysis.attentions.noclssep.scale.linear.reduced.attention_distance
 print('done')
