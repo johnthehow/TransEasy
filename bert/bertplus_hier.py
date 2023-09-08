@@ -204,11 +204,9 @@ class attentions_noclssep_scale_linear_reduced:
 	def __init__(self, attentions_noclssep_scale_linear_raw, tokens):
 		self._tokens = tokens
 		self._data = attentions_noclssep_scale_linear_raw
-		if self._tokens.custom == []:
-			print('tokens.custom = []')
+		if not self._tokens.custom:
 			self._target_tokens = self._tokens.pre.spaced
 		else:
-			print('tokens.custom != []')
 			self._target_tokens = self._tokens.custom
 		self.matrices = self.reduced_attention_noclssep_linscale(self._target_tokens)
 
@@ -281,6 +279,15 @@ class attentions_noclssep_scale_linear_reduced:
 		rows = torch.index_select(self.matrices, -2, torch.tensor(word_poss))
 		return rows
 	
+	@property
+	def attention_distance(self): # tensor(12,12)
+		attn_distances = []
+		max_poss = self.matrices.argmax(axis=-1)
+		for i in range(self.matrices.shape[3]):
+			attn_distance = abs(max_poss[:,:,i]-i)
+			attn_distances.append(attn_distance)
+		return sum(attn_distances)/self.matrices.shape[3]
+
 # 依赖: class:tokenizations
 class analyzer:
 	def __init__(self,sent):
@@ -296,4 +303,5 @@ sent = 'The salesman gave us a demo of the Huggingface course, and it is a seemm
 ud_sent = ['the', 'salesman', 'gave', 'us', 'a', 'demo', 'of', 'the', 'huggingface', 'course', ',', 'and', 'it', 'is', 'a', 'seemmingly', 'working', 'very', 'well', '.']
 analysis = analyzer(sent)
 
+res = analysis.attentions.noclssep.scale.linear.reduced.attention_distance
 print('done')
