@@ -280,13 +280,18 @@ class attentions_noclssep_scale_linear_reduced:
 		return rows
 	
 	@property
-	def attention_distance(self): # tensor(12,12)
+	def attention_distance(self): # tensor(12,12) 一句话的144个关注距离
 		attn_distances = []
 		max_poss = self.matrices.argmax(axis=-1)
-		for i in range(self.matrices.shape[3]):
-			attn_distance = abs(max_poss[:,:,i]-i)
-			attn_distances.append(attn_distance)
-		return sum(attn_distances)/self.matrices.shape[3]
+		for i in range(self.matrices.shape[3]): # 确定reduced attention matrix的尺寸
+			attn_distance = abs(max_poss[:,:,i]-i) # 每行最大值所在位置-行号并取绝对值, 共144个值
+			attn_distances.append(attn_distance) # 把每个词的144个关注距离里添加到容器中
+		return sum(attn_distances)/self.matrices.shape[3] # 一句话的总依存距离除以句长
+
+	@property
+	def standard_attention_distance(self): # tensor(12,12)
+		sd_attn_distance = self.attention_distance/self.matrices.shape[3]
+		return sd_attn_distance
 
 # 依赖: class:tokenizations
 class analyzer:
@@ -299,9 +304,9 @@ class analyzer:
 
 
 
-sent = 'The salesman gave us a demo of the Huggingface course, and it is a seemmingly working very well.'
-ud_sent = ['the', 'salesman', 'gave', 'us', 'a', 'demo', 'of', 'the', 'huggingface', 'course', ',', 'and', 'it', 'is', 'a', 'seemmingly', 'working', 'very', 'well', '.']
-analysis = analyzer(sent, ud_sent)
+# sent = 'The salesman gave us a demo of the Huggingface course, and it is a seemmingly working very well.'
+# ud_sent = ['the', 'salesman', 'gave', 'us', 'a', 'demo', 'of', 'the', 'huggingface', 'course', ',', 'and', 'it', 'is', 'a', 'seemmingly', 'working', 'very', 'well', '.']
+# analysis = analyzer(sent, ud_sent)
 
-res = analysis.attentions.noclssep.scale.linear.reduced.attention_distance
-print('done')
+# res = analysis.attentions.noclssep.scale.linear.reduced.attention_distance
+# print('done')
