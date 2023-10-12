@@ -18,22 +18,22 @@ os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:1080'
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 model = BertModel.from_pretrained('bert-base-uncased')
 
-class space_tokenizations:
+class pre_tokenizations:
 	def __init__(self, sent):
 		self.raw = sent.strip().lower() # str
 		self.spaced = self.raw.split(sep=' ') # [str, str]
 
 class bert_tokenizations:
 	def __init__(self, sent):
-		self.space_tokenizations = space_tokenizations(sent)
-		self.obj = tokenizer(self.space_tokenizations.raw, return_tensors='pt') # {key:tensor, key:tensor}
+		self.pre_tokenizations = pre_tokenizations(sent)
+		self.obj = tokenizer(self.pre_tokenizations.raw, return_tensors='pt') # {key:tensor, key:tensor}
 		self.ids = self.obj['input_ids'][0].tolist() # [int, int]
 		self.ids_noclssep = self.ids[1:-1] # [int, int]
 		self.wordpieces = bert_wordpieces(sent)
 
 class bert_wordpieces:
 	def __init__(self, sent):
-		self._pre_tokenizations = space_tokenizations(sent)
+		self._pre_tokenizations = pre_tokenizations(sent)
 		self._obj = tokenizer(self._pre_tokenizations.raw, return_tensors='pt') # {key:tensor, key:tensor}
 		self._ids = self._obj['input_ids'][0].tolist() # [int, int]
 		self.raw = tokenizer.convert_ids_to_tokens(self._ids)
@@ -41,7 +41,7 @@ class bert_wordpieces:
 
 class tokenizations: # 20231012142104
 	def __init__(self,sent):
-		self.pre = space_tokenizations(sent)
+		self.pre = pre_tokenizations(sent)
 		self.bert = bert_tokenizations(sent)
 		self.custom = []
 
