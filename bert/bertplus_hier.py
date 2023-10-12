@@ -2,6 +2,7 @@
 # 一次句子分析, 多个函数共享
 # 统一用torch.tensor表征所有容器
 # 设计概念图: bertplus_hier_20230906103328.drawio
+# 设计概念图2: bertplus_hier_20231012141911.drawio
 
 from transformers import BertTokenizer
 from transformers import BertModel
@@ -9,6 +10,8 @@ from torch.nn import Softmax
 import torch
 import matplotlib.pyplot as plt
 import os
+
+# 每次Transformer实例化需要联网, 不论是否已经下载模型到本地, 此举在于配置操作系统环境变量
 os.environ['HTTP_PROXY'] = 'http://127.0.0.1:1080'
 os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:1080'
 
@@ -36,7 +39,7 @@ class bert_wordpieces:
 		self.raw = tokenizer.convert_ids_to_tokens(self._ids)
 		self.noclssep = self.raw[1:-1]
 
-class tokenizations:
+class tokenizations: # 20231012142104
 	def __init__(self,sent):
 		self.pre = pre_tokenizations(sent)
 		self.bert = bert_tokenizations(sent)
@@ -72,7 +75,7 @@ class attentions:
 		self._raw_data = self.noclssep.scale.linear.raw._raw
 		self.raw = attentions_raw(self._raw_data, tokens)
 
-class attentions_raw:
+class attentions_raw: # raw_data是bert_output的实例; tokens是tokenizations的实例
 	def __init__(self, raw_data, tokens):
 		self.matrices = raw_data
 		self._tokens = tokens
@@ -210,8 +213,7 @@ class attentions_noclssep_scale_linear_reduced:
 			self._target_tokens = self._tokens.custom
 		self.matrices = self.reduced_attention_noclssep_linscale(self._target_tokens)
 
-	def wordpiece_mapping(self,target_tokens):
-		'''[int,int]'''
+	def wordpiece_mapping(self,target_tokens): # wordpiece分词结果和用户输入分词之间的映射表
 		ud_sent = target_tokens
 		wp_sent = self._tokens.bert.wordpieces.noclssep
 		ud_cnt = 0
@@ -242,7 +244,7 @@ class attentions_noclssep_scale_linear_reduced:
 			idmap_dict[i] = [idx for idx,j in enumerate(idmap_list) if j==i]
 		return idmap_dict
 
-	def reduced_attention_noclssep_linscale(self,target_tokens):
+	def reduced_attention_noclssep_linscale(self,target_tokens): # 返回没有[CLS][SEP]的, 进行线性放缩的, 按照用户分词合并的注意力矩阵
 		posmap = self.wordpiece_mapping(target_tokens)
 		num_rows = len(posmap.keys())
 		num_cols = sum([len(posmap[x]) for x in posmap if isinstance(posmap[x], list)])
@@ -258,7 +260,7 @@ class attentions_noclssep_scale_linear_reduced:
 					row_col_reduced_attention[lay][head][:,pair[0]] = torch.index_select(row_reduced_attention[lay][head], -1, torch.tensor(pair[1])).sum(axis=-1)
 		return row_col_reduced_attention
 
-	def viz(self, lay, head):
+	def viz(self, lay, head): 
 		fig = plt.figure()
 		ax = fig.subplots()
 		data = self.matrices[lay][head].detach().numpy()
@@ -280,7 +282,7 @@ class attentions_noclssep_scale_linear_reduced:
 		return rows
 	
 	@property
-	def attention_distance(self): # tensor(12,12) 一句话的144个关注距离
+	def attention_distance_abs(self): # tensor(12,12) 一句话的144个关注距离
 		attn_distances = []
 		max_poss = self.matrices.argmax(axis=-1)
 		for i in range(self.matrices.shape[3]): # 确定reduced attention matrix的尺寸
@@ -289,11 +291,70 @@ class attentions_noclssep_scale_linear_reduced:
 		return sum(attn_distances)/self.matrices.shape[3] # 一句话的总依存距离除以句长
 
 	@property
-	def standard_attention_distance(self): # tensor(12,12)
-		sd_attn_distance = self.attention_distance/self.matrices.shape[3]
+	def attention_distance_directed(self):
+		attn_distances = []
+		max_poss = self.matrices.argmax(axis=-1)
+		for i in range(self.matrices.shape[3]):
+			attn_distance = max_poss[:,:,i]-i
+			attn_distances.append(attn_distance)
+		return sum(attn_distances)/self.matrices.shape[3]
+
+	@property
+	def standard_attention_distance_abs(self): # tensor(12,12)
+		sd_attn_distance = self.attention_distance_abs/self.matrices.shape[3] # self.matrices.shape[3]即句长
 		return sd_attn_distance
 
-# 依赖: class:tokenizations
+'''
+[类注释]
+	[功能]
+		1. 主要功能: 全脚本主类, 程序入口, 主要供其他脚本调用
+		2. 额外功能
+	[设计图]
+		1. 索引码: 
+		2. 文件类型: 
+	[参数]
+		1. [参数1]
+			1. 数据类型: 
+			2. 数据结构: 
+			3. 参数类型: 
+			4. 语义: 
+			5. 取值范围: 
+			6. 获得来源: 
+			7. 样例文件/输入: 
+		2. [参数2]
+			1. 数据类型: 
+			2. 数据结构: 
+			3. 参数类型: 
+			4. 语义: 
+			5. 取值范围: 
+			6. 获得来源: 
+			7. 样例文件/输入: 
+	[用例]
+		1. [用例1]
+			1. 语句: 
+			2. 输出
+				1. 语义: 
+				2. 数据类型: 
+				3. 数据结构: 
+				4. 样例文件/输出: 
+	[依赖]
+		1. class: tokenizations
+		2. 
+	[已知问题]
+		1. [问题1标题]
+			1. 问题描述
+			2. 问题复现
+				1. 复现环境
+				2. 复现语句
+				3. 复现存档
+	[开发计划]
+		1. 
+		2.
+	[备注]
+		1.
+		2. 
+'''
+# 20231012141954
 class analyzer:
 	def __init__(self,sent, custom_tokenization):
 		self.tokenization = tokenizations(sent)
