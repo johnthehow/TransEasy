@@ -83,7 +83,7 @@ class attentions_raw: # raw_data是bert_output的实例; tokens是tokenizations�
 	def viz(self, lay, head):
 		fig = plt.figure()
 		ax = fig.subplots()
-		data = self.matrices[lay][head].detach().numpy()
+		data = self.matrices[lay-1][head-1].detach().numpy()
 		gcf = ax.matshow(data,cmap='Greens')
 		ax.set_xticks(range(data.shape[0]))
 		ax.set_yticks(range(data.shape[1]))
@@ -91,7 +91,7 @@ class attentions_raw: # raw_data是bert_output的实例; tokens是tokenizations�
 		yticklabels = [j+' '+str(i+1) for i,j in zip(range(data.shape[0]), self._tokens.bert.wordpieces.raw)]
 		ax.set_xticklabels(xticklabels, rotation=45, ha='left')
 		ax.set_yticklabels(yticklabels)
-		ax.set_xlabel(f'Layer-{lay+1}, Head-{head+1}')
+		ax.set_xlabel(f'Layer-{lay}, Head-{head}')
 		bar = plt.gcf().colorbar(gcf)
 		plt.show()
 		plt.close()
@@ -115,7 +115,7 @@ class attentions_noclssep_raw:
 	def viz(self, lay, head):
 		fig = plt.figure()
 		ax = fig.subplots()
-		data = self.matrices[lay][head].detach().numpy()
+		data = self.matrices[lay-1][head-1].detach().numpy()
 		gcf = ax.matshow(data,cmap='Greens')
 		ax.set_xticks(range(data.shape[0]))
 		ax.set_yticks(range(data.shape[1]))
@@ -123,7 +123,7 @@ class attentions_noclssep_raw:
 		yticklabels = [j+' '+str(i+1) for i,j in zip(range(data.shape[0]), self._tokens.bert.wordpieces.noclssep)]
 		ax.set_xticklabels(xticklabels, rotation=45, ha='left')
 		ax.set_yticklabels(yticklabels)
-		ax.set_xlabel(f'Layer-{lay+1}, Head-{head+1}  No [CLS][SEP]')
+		ax.set_xlabel(f'Layer-{lay}, Head-{head}  No [CLS][SEP]')
 		bar = plt.gcf().colorbar(gcf)
 		plt.show()
 		plt.close()
@@ -148,7 +148,7 @@ class attentions_noclssep_scale_softmax:
 	def viz(self, lay, head):
 		fig = plt.figure()
 		ax = fig.subplots()
-		data = self.matrices[lay][head].detach().numpy()
+		data = self.matrices[lay-1][head-1].detach().numpy()
 		gcf = ax.matshow(data,cmap='Greens')
 		ax.set_xticks(range(data.shape[0]))
 		ax.set_yticks(range(data.shape[1]))
@@ -156,7 +156,7 @@ class attentions_noclssep_scale_softmax:
 		yticklabels = [j+' '+str(i+1) for i,j in zip(range(data.shape[0]), self._tokens.bert.wordpieces.noclssep)]
 		ax.set_xticklabels(xticklabels, rotation=45, ha='left')
 		ax.set_yticklabels(yticklabels)
-		ax.set_xlabel(f'Layer-{lay+1}, Head-{head+1}  No [CLS][SEP] Softmax-scale')
+		ax.set_xlabel(f'Layer-{lay}, Head-{head}  No [CLS][SEP] Softmax-scale')
 		bar = plt.gcf().colorbar(gcf)
 		plt.show()
 		plt.close()
@@ -184,7 +184,7 @@ class attentions_noclssep_scale_linear_raw:
 	def viz(self, lay, head):
 		fig = plt.figure()
 		ax = fig.subplots()
-		data = self.matrices[lay][head].detach().numpy()
+		data = self.matrices[lay-1][head-1].detach().numpy()
 		gcf = ax.matshow(data,cmap='Greens')
 		ax.set_xticks(range(data.shape[0]))
 		ax.set_yticks(range(data.shape[1]))
@@ -192,7 +192,7 @@ class attentions_noclssep_scale_linear_raw:
 		yticklabels = [j+' '+str(i+1) for i,j in zip(range(data.shape[0]), self._tokens.bert.wordpieces.noclssep)]
 		ax.set_xticklabels(xticklabels, rotation=45, ha='left')
 		ax.set_yticklabels(yticklabels)
-		ax.set_xlabel(f'Layer-{lay+1}, Head-{head+1}  No [CLS][SEP] Linear-scale')
+		ax.set_xlabel(f'Layer-{lay}, Head-{head}  No [CLS][SEP] Linear-scale')
 		bar = plt.gcf().colorbar(gcf)
 		plt.show()
 		plt.close()
@@ -263,7 +263,7 @@ class attentions_noclssep_scale_linear_reduced:
 	def viz(self, lay, head): 
 		fig = plt.figure()
 		ax = fig.subplots()
-		data = self.matrices[lay][head].detach().numpy()
+		data = self.matrices[lay-1][head-1].detach().numpy()
 		gcf = ax.matshow(data,cmap='Greens')
 		ax.set_xticks(range(data.shape[0]))
 		ax.set_yticks(range(data.shape[1]))
@@ -271,7 +271,7 @@ class attentions_noclssep_scale_linear_reduced:
 		yticklabels = [j+' '+str(i+1) for i,j in zip(range(data.shape[0]), self._target_tokens)]
 		ax.set_xticklabels(xticklabels, rotation=45, ha='left')
 		ax.set_yticklabels(yticklabels)
-		ax.set_xlabel(f'Layer-{lay+1}, Head-{head+1}  No [CLS][SEP] Linear-scale reduced')
+		ax.set_xlabel(f'Layer-{lay}, Head-{head}  No [CLS][SEP] Linear-scale reduced')
 		bar = plt.gcf().colorbar(gcf)
 		plt.show()
 		plt.close()		
@@ -365,9 +365,8 @@ class analyzer:
 
 
 
-# sent = 'The salesman gave us a demo of the Huggingface course, and it is a seemmingly working very well.'
-# ud_sent = ['the', 'salesman', 'gave', 'us', 'a', 'demo', 'of', 'the', 'huggingface', 'course', ',', 'and', 'it', 'is', 'a', 'seemmingly', 'working', 'very', 'well', '.']
-# analysis = analyzer(sent, ud_sent)
-
-# res = analysis.attentions.noclssep.scale.linear.reduced.attention_distance
-# print('done')
+if __name__ == '__main__':
+	sent = 'The salesman gave us a demo of the Huggingface course, and it is a seemmingly working very well.'
+	ud_sent = ['the', 'salesman', 'gave', 'us', 'a', 'demo', 'of', 'the', 'huggingface', 'course', ',', 'and', 'it', 'is', 'a', 'seemmingly', 'working', 'very', 'well', '.']
+	analysis = analyzer(sent, ud_sent)
+	print('done')
