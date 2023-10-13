@@ -282,7 +282,7 @@ class attentions_noclssep_scale_linear_reduced:
 		return rows
 	
 	@property
-	def attention_distance_abs(self): # tensor(12,12) 一句话的144个关注距离
+	def attention_distance_mean_abs(self): # tensor(12,12) 一句话的144个关注距离
 		attn_distances = []
 		max_poss = self.matrices.argmax(axis=-1)
 		for i in range(self.matrices.shape[3]): # 确定reduced attention matrix的尺寸
@@ -291,18 +291,21 @@ class attentions_noclssep_scale_linear_reduced:
 		return sum(attn_distances)/self.matrices.shape[3] # 一句话的总依存距离除以句长
 
 	@property
-	def attention_distance_directed(self):
+	def attention_distance_mean_directed(self):
 		attn_distances = []
-		max_poss = self.matrices.argmax(axis=-1)
-		for i in range(self.matrices.shape[3]):
-			attn_distance = max_poss[:,:,i]-i
+		max_poss = self.matrices.argmax(axis=-1) 
+		for i in range(self.matrices.shape[3]): # 确定reduced attention matrix的尺寸
+			attn_distance = max_poss[:,:,i]-i # 每行最大值所在位置-行号, 共144个值
 			attn_distances.append(attn_distance)
 		return sum(attn_distances)/self.matrices.shape[3]
 
 	@property
-	def standard_attention_distance_abs(self): # tensor(12,12)
-		sd_attn_distance = self.attention_distance_abs/self.matrices.shape[3] # self.matrices.shape[3]即句长
-		return sd_attn_distance
+	def attention_distance_mean_directed_std(self):
+		return self.attention_distance_mean_directed/self.matrices.shape[3] # self.matrices.shape[3]即句长
+
+	@property
+	def attention_distance_mean_abs_std(self): # tensor(12,12)
+		return self.attention_distance_mean_abs/self.matrices.shape[3] # self.matrices.shape[3]即句长
 
 '''
 [类注释]
