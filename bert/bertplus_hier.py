@@ -10,6 +10,7 @@ from torch.nn import Softmax
 import torch
 import matplotlib.pyplot as plt
 import os
+from thehow.snips.logx import logger
 
 # 每次Transformer实例化需要联网, 不论是否已经下载模型到本地, 此举在于配置操作系统环境变量
 os.environ['HTTP_PROXY'] = 'http://127.0.0.1:1080'
@@ -208,6 +209,7 @@ class attentions_noclssep_scale_linear_reduced:
 		self._tokens = tokens
 		self._data = attentions_noclssep_scale_linear_raw
 		if not self._tokens.custom:
+			print('custom tokenization not given')
 			self._target_tokens = self._tokens.pre.spaced
 		else:
 			self._target_tokens = self._tokens.custom
@@ -228,7 +230,7 @@ class attentions_noclssep_scale_linear_reduced:
 					idmap_list.append(ud_cnt)
 					ud_cnt += 1
 					wp_cnt += 1
-				else:
+				elif ud_pop != wp_pop and len(wp_pop.replace('##',''))<len(ud_pop):
 					wp_buffer.append(wp_pop.replace('##',''))
 					idmap_list.append(ud_cnt)
 					if ''.join(wp_buffer) != ud_pop:
@@ -237,6 +239,9 @@ class attentions_noclssep_scale_linear_reduced:
 						wp_cnt += 1
 						ud_cnt += 1
 						wp_buffer = []
+				else:
+					logger.error(f'wordpiece "{wp_pop}" larger than custom tokenization unit "{ud_pop}" in sentence "{" ".join(ud_sent)}" matrix reduction not possible.')
+					raise ValueError(f'[ERR] wordpiece "{wp_pop}" larger than custom tokenization unit "{ud_pop}" in sentence "{" ".join(ud_sent)}" matrix reduction not possible.')
 			except IndexError:
 				break
 		idmap_dict = dict()
@@ -281,6 +286,9 @@ class attentions_noclssep_scale_linear_reduced:
 		rows = torch.index_select(self.matrices, -2, torch.tensor(word_poss))
 		return rows
 	
+	def attn_row_by_pos(self, wordpos):
+		return torch.index_select(self.matrices, -2, torch.tensor(wordpos)).squeeze()
+
 	@property
 	def attention_distance_mean_abs(self): # tensor(12,12) 一句话的144个关注距离
 		attn_distances = []
@@ -369,7 +377,9 @@ class analyzer:
 
 
 if __name__ == '__main__':
-	sent = 'The salesman gave us a demo of the Huggingface course, and it is a seemmingly working very well.'
-	ud_sent = ['the', 'salesman', 'gave', 'us', 'a', 'demo', 'of', 'the', 'huggingface', 'course', ',', 'and', 'it', 'is', 'a', 'seemmingly', 'working', 'very', 'well', '.']
+	# sent = 'The salesman gave us a demo of the Huggingface course, and it is a seemmingly working very well.'
+	# ud_sent = ['the', 'salesman', 'gave', 'us', 'a', 'demo', 'of', 'the', 'huggingface', 'course', ',', 'and', 'it', 'is', 'a', 'seemmingly', 'working', 'very', 'well', '.']
+	sent = "louis the german invaded moravia and replaced mojmír i with his nephew rastiz who became st. rastislav."
+	ud_sent = ['louis', 'the', 'german', 'invaded', 'moravia', 'and', 'replaced', 'mojmír', 'i', 'with', 'his', 'nephew', 'rastiz', 'who', 'became', 'st.', 'rastislav', '.']
 	analysis = analyzer(sent, ud_sent)
 	print('done')
