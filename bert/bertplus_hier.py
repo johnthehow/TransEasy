@@ -3,6 +3,8 @@
 # 统一用torch.tensor表征所有容器
 # 设计概念图: bertplus_hier_20230906103328.drawio
 # 设计概念图2: bertplus_hier_20231012141911.drawio
+# 用法: from thehow.transeasy.bert.bertplus_hier import analyzer
+#       result = analyzer('this is a pen', ['this','is','a','pen'])
 
 from transformers import BertTokenizer
 from transformers import BertModel
