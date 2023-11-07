@@ -1,10 +1,54 @@
-# 设计思想, 高计算量操作尽量减少, 对齐问题解决思路要清晰
-# 一次句子分析, 多个函数共享
-# 统一用torch.tensor表征所有容器
-# 设计概念图: bertplus_hier_20230906103328.drawio
-# 设计概念图2: bertplus_hier_20231012141911.drawio
-# 用法: from thehow.transeasy.bert.bertplus_hier import analyzer
-#       result = analyzer('this is a pen', ['this','is','a','pen'])
+'''
+[功能]
+1. 原始Attention矩阵及其可视化
+2. Attention矩阵的修订版及其可视化
+2.1 无[CLS]和[SEP]的Attention矩阵
+	2.1.1 无[CLS]和[SEP]的Attention 原始矩阵
+		2.1.1.1 矩阵本体
+		2.1.1.2 矩阵可视化
+		2.1.1.3 矩阵中token对应的行
+	2.1.2 无[CLS]和[SEP]的Attention 放缩矩阵
+		2.1.2.1 线性放缩
+			2.1.2.1.1 原始矩阵
+				2.1.2.1.1.1 矩阵本体
+				2.1.2.1.1.2 矩阵可视化
+				2.1.2.1.1.3 矩阵中token对应的行
+			2.1.2.1.2 wordpiece合并矩阵
+				2.1.2.1.2.1 矩阵本体
+				2.1.2.1.2.2 矩阵可视化
+				2.1.2.1.2.3 矩阵中token对应的Attention行
+				2.1.2.1.2.4 基于wordpiece合并矩阵的关注距离(绝对值)
+				2.1.2.1.2.5 基于wordpiece合并矩阵的关注距离(标准化绝对值)
+				2.1.2.1.2.6 基于wordpiece合并矩阵的关注距离(有向)
+				2.1.2.1.2.7 基于wordpiece合并矩阵的关注距离(标准化有向)
+				2.1.2.1.2.8 wordpiece 到 word的合并映射表
+				2.1.2.1.2.9 矩阵中对应位置n的Attention行
+		2.1.2.2 Softmax放缩
+			2.1.2.2.1 矩阵本地
+			2.1.2.2.2 矩阵可视化
+			2.1.2.2.3 矩阵中token对应的行	
+
+
+[设计思路]
+1. 高计算量操作尽量减少
+2. WordPiece对齐问题解决思路要清晰
+3. 统一用torch.tensor表征所有容器
+
+[设计概念图]
+1. bertplus_hier_20230906103328.drawio
+2. bertplus_hier_20231012141911.drawio
+
+[用法]
+from thehow.transeasy.bert.bertplus import analyzer
+result = analyzer('this is a pen', ['this','is','a','pen'])
+
+[备注]
+1. 这个版本的bertplus, 为了使用的便捷性(对象.属性.属性.属性...), 在编程思路上比较复杂
+2. 如果后期无法维护, 建议回退到commit: 6ded0e2 (包括) 之前的版本
+3. 在6ded0e2(包括)之前的版本, 该脚本名为bertplus_hier.py
+4. 在6ded0e2(包括)之前的版本, 维护友好型(单使用不太友好)的脚本名为bertplus.py
+'''
+
 
 from transformers import BertTokenizer
 from transformers import BertModel

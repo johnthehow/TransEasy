@@ -1,3 +1,13 @@
+''' 
+[功能]
+通过HuggingFace BERT可以方便地访问BERT的各个组件, 包括他们的权重矩阵和参数
+然而, 从文本进入模型到走出模型, 我称之为数据流的中间阶段的表征只有部分能够被访问(各层hidden states和Attentions)
+本模块旨在为访问文本进入模型后的数据流的所有阶段提供便利的接口
+[用法]
+from transeasy.bert.bertscope import analyzer
+repr_stream = analyzer(文本字符串)
+'''
+
 import torch
 from torch import nn
 from transformers import BertModel
